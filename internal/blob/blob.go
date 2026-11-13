@@ -35,8 +35,11 @@ type backend interface {
 }
 
 type store struct {
-	backend backend
-	prefix  string
+	backend   backend
+	prefix    string
+	lifecycle sync.RWMutex
+	closed    bool
+	closeErr  error
 }
 
 const operationTimeout = 5 * time.Minute
@@ -71,6 +74,30 @@ func New(c Config) (Store, error) {
 		return nil, err
 	}
 	return &store{backend: b, prefix: prefix}, nil
+}
+
+// Close releases resources owned by this Store. It is optional so the public
+// Store contract remains compatible with callers and injected implementations.
+// Active operations and Open readers finish before the provider client closes.
+func (s *store) Close() error {
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
+	if s.closed {
+		return s.closeErr
+	}
+	s.closed = true
+	if closer, ok := s.backend.(io.Closer); ok {
+		s.closeErr = safeError("client close", closer.Close())
+	}
+	return s.closeErr
+}
+func (s *store) acquire() error {
+	s.lifecycle.RLock()
+	if s.closed {
+		s.lifecycle.RUnlock()
+		return errors.New("storage is closed")
+	}
+	return nil
 }
 
 func validateBucket(bucket string) error {
@@ -135,6 +162,13 @@ func safeError(op string, err error) error {
 	return fmt.Errorf("storage %s failed", op)
 }
 func (s *store) Put(ctx context.Context, k string, r io.Reader, size int64, contentType string) error {
+	if err := s.acquire(); err != nil {
+		return err
+	}
+	defer s.lifecycle.RUnlock()
+	return s.put(ctx, k, r, size, contentType)
+}
+func (s *store) put(ctx context.Context, k string, r io.Reader, size int64, contentType string) error {
 	k, err := s.key(k)
 	if err != nil {
 		return err
@@ -153,6 +187,16 @@ func (s *store) Put(ctx context.Context, k string, r io.Reader, size int64, cont
 	return safeError("write", s.backend.put(ctx, k, &contextReader{ctx: ctx, r: r}, size, contentType))
 }
 func (s *store) Open(ctx context.Context, k string) (io.ReadCloser, error) {
+	if err := s.acquire(); err != nil {
+		return nil, err
+	}
+	r, err := s.open(ctx, k, s.lifecycle.RUnlock)
+	if err != nil {
+		s.lifecycle.RUnlock()
+	}
+	return r, err
+}
+func (s *store) open(ctx context.Context, k string, release func()) (io.ReadCloser, error) {
 	k, err := s.key(k)
 	if err != nil {
 		return nil, err
@@ -167,9 +211,20 @@ func (s *store) Open(ctx context.Context, k string) (io.ReadCloser, error) {
 		cancel()
 		return nil, safeError("read", err)
 	}
-	return &stream{ctx: ctx, r: r, cancel: cancel}, nil
+	result := &stream{ctx: ctx, r: r, cancel: cancel, release: release}
+	// A canceled request also releases an unread stream, so Store.Close cannot
+	// retain the provider indefinitely if the caller abandons its reader.
+	context.AfterFunc(ctx, func() { result.Close() })
+	return result, nil
 }
 func (s *store) Delete(ctx context.Context, k string) error {
+	if err := s.acquire(); err != nil {
+		return err
+	}
+	defer s.lifecycle.RUnlock()
+	return s.delete(ctx, k)
+}
+func (s *store) delete(ctx context.Context, k string) error {
 	k, err := s.key(k)
 	if err != nil {
 		return err
@@ -186,6 +241,10 @@ func (s *store) Delete(ctx context.Context, k string) error {
 	return safeError("delete", err)
 }
 func (s *store) Test(ctx context.Context) (err error) {
+	if err := s.acquire(); err != nil {
+		return err
+	}
+	defer s.lifecycle.RUnlock()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	if err := ctx.Err(); err != nil {
@@ -201,14 +260,14 @@ func (s *store) Test(ctx context.Context) (err error) {
 	defer func() {
 		cleanupCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer stop()
-		if cleanupErr := s.Delete(cleanupCtx, key); cleanupErr != nil {
+		if cleanupErr := s.delete(cleanupCtx, key); cleanupErr != nil {
 			err = errors.Join(err, errors.New("storage probe cleanup failed"))
 		}
 	}()
-	if err = s.Put(ctx, key, bytes.NewReader(token), int64(len(token)), "application/octet-stream"); err != nil {
+	if err = s.put(ctx, key, bytes.NewReader(token), int64(len(token)), "application/octet-stream"); err != nil {
 		return err
 	}
-	r, err := s.Open(ctx, key)
+	r, err := s.open(ctx, key, nil)
 	if err != nil {
 		return err
 	}
@@ -239,12 +298,13 @@ func (r *contextReader) Read(p []byte) (int, error) {
 }
 
 type stream struct {
-	ctx    context.Context
-	r      io.ReadCloser
-	cancel context.CancelFunc
-	once   sync.Once
-	err    error
-	eof    bool
+	ctx     context.Context
+	r       io.ReadCloser
+	cancel  context.CancelFunc
+	once    sync.Once
+	err     error
+	eof     bool
+	release func()
 }
 
 func (r *stream) Read(p []byte) (int, error) {
@@ -265,7 +325,13 @@ func (r *stream) Read(p []byte) (int, error) {
 	return n, err
 }
 func (r *stream) Close() error {
-	r.once.Do(func() { r.err = safeError("close", r.r.Close()); r.cancel() })
+	r.once.Do(func() {
+		r.cancel()
+		r.err = safeError("close", r.r.Close())
+		if r.release != nil {
+			r.release()
+		}
+	})
 	return r.err
 }
 

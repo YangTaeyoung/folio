@@ -36,7 +36,14 @@ partial state, so the server must roll back uncommitted artifact keys.
 
 Operations have a five-minute context deadline and preserve an earlier caller
 deadline. Open retains its context through streaming and cancels on EOF/Close.
-Callers must close returned readers. Cancellation can interrupt provider I/O;
+Callers must close returned readers. Stores additionally implement optional
+`io.Closer` while preserving the `Store` interface. Cache a Store per backend,
+then close it at backend removal or server shutdown. Close is idempotent, rejects
+new operations, and waits for active writes/probes/readers before releasing the
+owned GCS SDK client. Reader cancellation releases an
+abandoned stream. S3 retains the official SDK HTTP transport lifecycle; Azure uses its SDK's
+shared default HTTP transport. This adapter does not replace or close either
+provider's default transport. Local os.Root handles are closed per operation. Cancellation can interrupt provider I/O;
 an arbitrary caller-owned Reader must itself cooperate if its Read blocks.
 `Test` writes random bytes under a random private probe key, reads and compares
 bytes, then deletes the key. Its main deadline is 30 seconds, with independent

@@ -70,3 +70,5 @@ func (b *gcsBackend) open(ctx context.Context, key string) (io.ReadCloser, error
 func (b *gcsBackend) delete(ctx context.Context, key string) error {
 	return gcsError(b.client.Bucket(b.bucket).Object(key).Delete(ctx))
 }
+
+func (b *gcsBackend) Close() error { return b.client.Close() }
