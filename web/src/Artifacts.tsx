@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
   ArrowUpRight,
@@ -57,32 +57,48 @@ export function ArtifactPreview({
 }) {
   const [url, setURL] = useState("");
   const [error, setError] = useState("");
+  const target = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let active = true;
     setURL("");
     setError("");
-    api<{ url: string }>(
-      `/api/artifacts/${artifact.id}/launch`,
-      json("POST", {}),
-    )
-      .then((r) => {
-        if (active) setURL(r.url);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+    const launch = () => {
+      api<{ url: string }>(
+        `/api/artifacts/${artifact.id}/launch`,
+        json("POST", {}),
+      )
+        .then((r) => {
+          if (active) setURL(r.url);
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    };
+    let observer: IntersectionObserver | undefined;
+    if (target.current && typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer?.disconnect();
+            launch();
+          }
+        },
+        { rootMargin: "250px" },
+      );
+      observer.observe(target.current);
+    } else launch();
     return () => {
       active = false;
+      observer?.disconnect();
     };
   }, [artifact.id, artifact.currentVersionId]);
   return (
-    <div className={`artifact-preview ${className}`}>
+    <div ref={target} className={`artifact-preview ${className}`}>
       {url ? (
         <iframe
           title={`${artifact.title} 미리보기`}
           src={url}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
-          loading="lazy"
         />
       ) : (
         <div className="preview-placeholder">

@@ -17,7 +17,7 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
-import { api, bytes, date, json } from "./api";
+import { api, bytes, date, json, setCSRF } from "./api";
 import type {
   Artifact,
   Audit,
@@ -25,6 +25,7 @@ import type {
   Domain,
   Organization,
   Policy,
+  Session,
   Token,
   User,
 } from "./types";
@@ -207,7 +208,12 @@ export function MembersPage({ self }: { self: User }) {
                       <div className="button-row">
                         <button
                           className="button secondary compact"
-                          disabled={a.busy}
+                          disabled={a.busy || u.id === self.id}
+                          title={
+                            u.id === self.id
+                              ? "내 계정에서 비밀번호를 변경하세요"
+                              : undefined
+                          }
                           onClick={() => setConfirm(u)}
                         >
                           <KeyRound size={14} />
@@ -1104,11 +1110,14 @@ export function DomainsPage() {
                     disabled={a.busy}
                     onClick={() =>
                       void a.run(async () => {
-                        await api(
-                          `/api/domains/${d.id}/provision`,
-                          json("POST"),
-                        );
-                        r.reload();
+                        try {
+                          await api(
+                            `/api/domains/${d.id}/provision`,
+                            json("POST"),
+                          );
+                        } finally {
+                          r.reload();
+                        }
                         setFeedback(
                           "Cloudflare에 레코드를 등록했습니다. 등록 확인을 실행해 주세요.",
                         );
@@ -1780,6 +1789,116 @@ export function AuditPage() {
             ))}
           </div>
         )}
+      </section>
+    </>
+  );
+}
+
+export function AccountPage({
+  session,
+  onSession,
+}: {
+  session: Session;
+  onSession: (s: Session) => void;
+}) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saved, setSaved] = useState(false);
+  const a = useAction();
+  return (
+    <>
+      <PageHeading
+        eyebrow="ACCOUNT / PROFILE"
+        title="내 계정"
+        description="계정 정보를 확인하고 비밀번호를 변경합니다."
+      />
+      <section className="panel">
+        <h2>계정 정보</h2>
+        <dl className="detail-list">
+          <div>
+            <dt>이름</dt>
+            <dd>{session.user.name}</dd>
+          </div>
+          <div>
+            <dt>이메일</dt>
+            <dd>{session.user.email}</dd>
+          </div>
+          <div>
+            <dt>역할</dt>
+            <dd>{session.user.role === "admin" ? "관리자" : "구성원"}</dd>
+          </div>
+        </dl>
+      </section>
+      <section className="panel">
+        <h2>비밀번호 변경</h2>
+        <p className="subtle">
+          변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void a.run(async () => {
+              if (next !== confirm)
+                throw new Error("새 비밀번호가 일치하지 않습니다.");
+              const s = await api<Session>(
+                "/api/auth/password",
+                json("POST", { currentPassword: current, newPassword: next }),
+              );
+              setCSRF(s.csrfToken);
+              onSession(s);
+              setCurrent("");
+              setNext("");
+              setConfirm("");
+              setSaved(true);
+            });
+          }}
+        >
+          <div className="form-grid">
+            <Field label="현재 비밀번호">
+              <input
+                required
+                type="password"
+                autoComplete="current-password"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+              />
+            </Field>
+            <div />
+          </div>
+          <div className="form-grid">
+            <Field label="새 비밀번호">
+              <input
+                required
+                type="password"
+                minLength={12}
+                autoComplete="new-password"
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+              />
+            </Field>
+            <Field label="새 비밀번호 확인">
+              <input
+                required
+                type="password"
+                minLength={12}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+            </Field>
+          </div>
+          <ErrorBox error={a.error} />
+          <button className="button primary" disabled={a.busy}>
+            {a.busy ? <Spinner /> : "비밀번호 변경"}
+          </button>
+          {saved && (
+            <span className="saved-inline">
+              <CheckCircle2 size={15} />
+              비밀번호를 변경했습니다.
+            </span>
+          )}
+        </form>
       </section>
     </>
   );

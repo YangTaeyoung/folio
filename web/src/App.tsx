@@ -32,6 +32,7 @@ import {
   visibilityLabels,
 } from "./Artifacts";
 import {
+  AccountPage,
   AgentsPage,
   AuditPage,
   DomainsPage,
@@ -52,7 +53,8 @@ type View =
   | "domains"
   | "agents"
   | "settings"
-  | "audit";
+  | "audit"
+  | "account";
 const nav = [
   { id: "library", label: "전체 아티팩트", icon: Layers },
   { id: "mine", label: "내 아티팩트", icon: UserRound },
@@ -66,6 +68,7 @@ const management = [
   { id: "agents", label: "에이전트", icon: Sparkles },
   { id: "settings", label: "조직 설정", icon: Settings },
   { id: "audit", label: "변경 기록", icon: History },
+  { id: "account", label: "내 계정", icon: UserRound },
 ];
 
 export default function App() {
@@ -398,7 +401,7 @@ function Workspace({
         <div className="nav-label">작업 공간</div>
         <nav aria-label="작업 공간 관리">
           {management
-            .filter((n) => isAdmin || n.id === "agents")
+            .filter((n) => isAdmin || ["agents", "account"].includes(n.id))
             .map((item) => (
               <button
                 key={item.id}
@@ -611,6 +614,8 @@ function Workspace({
                 </>
               )}
             </>
+          ) : view === "account" ? (
+            <AccountPage session={session} onSession={onSession} />
           ) : view === "agents" ? (
             <AgentsPage />
           ) : isAdmin ? (

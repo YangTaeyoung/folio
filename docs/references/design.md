@@ -20,3 +20,5 @@ Warm ivory canvas, subtle sage navigation, forest-green accent, charcoal body ty
 `assets/folio-library-concept.png` is an AI-generated design blueprint, created with the built-in image_gen tool after 12ui's hosted draft was unavailable without a separate account. It is not a screenshot of a functioning product. Final implementation must use actual server data and uploaded artifact previews, not the blueprint's fictional metrics/member identities.
 
 Prompt: high-fidelity Folio desktop workspace; Linear shell precision, Notion sharing, Vercel artifact thumbnails, Supabase settings clarity; ivory/sage/forest palette; artifact library with personal/organization collections; right-side sharing with selected-member picker and expiry; accessible, responsive, mature product density, no fake dashboards or neon/purple gradients.
+
+Implementation reference: [Intersection Observer](https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API) and installed TypeScript DOM declarations were checked for visible-preview loading. Folio requests its 60-second content grant when the preview approaches the viewport, then loads the iframe immediately.

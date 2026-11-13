@@ -1,0 +1,1 @@
+postMessage('Dedicated worker ready');

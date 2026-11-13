@@ -82,6 +82,7 @@ def main():
                     page.get_by_role('button', name='비밀번호 표시 닫기').click()
                     return temporary
 
+                expect(page.get_by_role('row').filter(has_text='admin@folio.test').get_by_role('button', name='초기화', exact=True)).to_be_disabled()
                 alice_temp = create_member('Alice', 'alice@folio.test')
                 bob_temp = create_member('Bob', 'bob@folio.test')
 
@@ -117,6 +118,8 @@ def main():
                 detail = page.get_by_role('dialog')
                 frame = detail.frame_locator('iframe')
                 expect(frame.locator('#status')).to_have_text('Relative ES modules ready')
+                expect(frame.locator('#worker-status')).to_have_text('Dedicated worker ready')
+                expect(frame.locator('#service-worker-status')).to_have_text('Service worker rejected')
                 frame.get_by_role('button', name='Count: 0', exact=True).click()
                 expect(frame.get_by_role('button', name='Count: 1', exact=True)).to_be_visible()
                 page.screenshot(path=str(screenshots / 'detail-desktop.png'), full_page=True)
@@ -214,9 +217,33 @@ def main():
                 page.get_by_role('button', name='메뉴 열기').click()
                 expect(page.get_by_role('button', name='내 아티팩트', exact=True)).to_be_visible()
                 page.screenshot(path=str(screenshots / 'navigation-mobile.png'), full_page=True)
+                page.get_by_role('button', name='내 계정', exact=True).click()
+                page.get_by_label('현재 비밀번호', exact=True).fill(password)
+                next_password = 'Folio-updated-password-123!'
+                page.get_by_label('새 비밀번호', exact=True).fill(next_password)
+                page.get_by_label('새 비밀번호 확인', exact=True).fill(next_password)
+                page.get_by_role('button', name='비밀번호 변경', exact=True).click()
+                expect(page.get_by_text('비밀번호를 변경했습니다.', exact=True)).to_be_visible()
+                page.set_viewport_size({'width':1440,'height':1000})
+                page.get_by_role('button', name='전체 아티팩트', exact=True).click()
+                # A long library must acquire a content grant when scrolled into view,
+                # rather than spending its 60-second lifetime below the fold.
+                page.evaluate('''async()=>{const me=await(await fetch('/api/me')).json();for(let i=0;i<18;i++){const f=new FormData();f.append('metadata',JSON.stringify({title:'Scroll fixture '+i,files:[{path:'index.html'}]}));f.append('file0',new Blob(['<!doctype html><title>Scroll fixture</title><h1>Scroll preview ready</h1>']),'index.html');const r=await fetch('/api/artifacts',{method:'POST',headers:{'X-CSRF-Token':me.csrfToken},body:f});if(!r.ok)throw new Error('Fixture publication failed')}}''')
+                page.reload(); page.wait_for_load_state('networkidle')
+                last = page.locator('.artifact-card').last
+                expect(last.locator('iframe')).to_have_count(0)
+                last.scroll_into_view_if_needed()
+                expect(last.locator('iframe')).to_have_count(1)
+                expect(last.frame_locator('iframe').locator('#status')).to_have_text('Relative ES modules ready')
+                page.get_by_role('button', name='로그아웃', exact=True).click()
+                expect(page.get_by_role('heading', name='작업 공간에 로그인')).to_be_visible()
+                page.get_by_label('이메일', exact=True).fill('admin@folio.test')
+                page.get_by_label('비밀번호', exact=True).fill(next_password)
+                page.get_by_role('button', name='로그인', exact=True).click()
+                expect(page.get_by_role('heading', name='팀의 작업이 모이는 곳')).to_be_visible()
                 assert not errors, errors
                 browser.close()
-                print(json.dumps({'status':'PASS','checks':['bootstrap','admin-created-members','forced-password-change','relative-es-modules','selected-share','organization-share','public-share','revocation','versions-and-rollback','zip-download','archive-restore','admin-screens','local-storage-probe','cleanup-preview','responsive-mobile'],'pageErrors':errors,'screenshots':str(screenshots)}))
+                print(json.dumps({'status':'PASS','checks':['bootstrap','admin-created-members','forced-password-change','relative-es-modules','selected-share','organization-share','public-share','revocation','versions-and-rollback','zip-download','archive-restore','admin-screens','local-storage-probe','cleanup-preview','responsive-mobile','self-reset-guard','normal-password-change','below-fold-preview-grants','dedicated-worker','service-worker-rejected'],'pageErrors':errors,'screenshots':str(screenshots)}))
         finally:
             proc.terminate()
             try:
