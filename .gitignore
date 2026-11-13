@@ -1,0 +1,17 @@
+.work/
+.env
+.env.*
+!.env.example
+data/
+dist/
+web/node_modules/
+web/dist/
+internal/webassets/dist/*
+!internal/webassets/dist/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+coverage*
+test-results/
+playwright-report/
+.DS_Store
