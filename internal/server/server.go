@@ -25,7 +25,6 @@ import (
 
 	"github.com/YangTaeyoung/folio/internal/blob"
 	"github.com/YangTaeyoung/folio/internal/dns"
-	_ "modernc.org/sqlite"
 )
 
 type DNSService interface{ Close() error }
@@ -173,6 +172,7 @@ type Server struct {
 	mu              sync.Mutex
 	cfg             Config
 	db              *sql.DB
+	processLock     *processLock
 	st              state
 	key             []byte
 	bootstrap       string
@@ -239,6 +239,16 @@ func New(c Config) (*Server, error) {
 	if e = os.Chmod(c.DataDir, 0700); e != nil {
 		return nil, e
 	}
+	processLock, e := acquireProcessLock(c.DataDir)
+	if e != nil {
+		return nil, e
+	}
+	initialized := false
+	defer func() {
+		if !initialized {
+			processLock.Close()
+		}
+	}()
 	keyPath := filepath.Join(c.DataDir, "data.key")
 	key, e := os.ReadFile(keyPath)
 	if os.IsNotExist(e) {
@@ -259,7 +269,7 @@ func New(c Config) (*Server, error) {
 		return nil, e
 	}
 	os.Chmod(filepath.Join(c.DataDir, "folio.db"), 0600)
-	s := &Server{cfg: c, db: db, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
+	s := &Server{cfg: c, db: db, processLock: processLock, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
 	if s.factory == nil {
 		s.factory = blob.New
 	}
@@ -297,6 +307,7 @@ func New(c Config) (*Server, error) {
 		}
 		s.bootstrap = strings.TrimSpace(string(v))
 	}
+	initialized = true
 	return s, nil
 }
 func (s *Server) BootstrapToken() string {
@@ -314,10 +325,11 @@ func (s *Server) Close() error {
 		return nil
 	}
 	s.closed = true
+	var dnsErr error
 	if s.dns != nil {
-		s.dns.Close()
+		dnsErr = s.dns.Close()
 	}
-	return s.db.Close()
+	return errors.Join(dnsErr, s.db.Close(), s.processLock.Close())
 }
 func (s *Server) save() error {
 	raw, e := json.Marshal(s.st)
