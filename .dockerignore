@@ -1,0 +1,16 @@
+.git
+.work
+.env
+.env.*
+data
+folio-data
+dist
+web/node_modules
+web/dist
+internal/webassets/dist
+*.db
+*.db-shm
+*.db-wal
+test-results
+playwright-report
+.DS_Store
