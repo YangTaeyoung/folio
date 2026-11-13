@@ -963,7 +963,7 @@ label textarea {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 200;
   background: #27332344;
   display: flex;
   align-items: center;

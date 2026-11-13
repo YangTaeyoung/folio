@@ -212,6 +212,8 @@ def main():
                 page.get_by_role('button', name='Working prototype 공유').click()
                 expect(page.get_by_role('dialog')).to_be_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                expect(page.get_by_role('dialog')).to_have_css('width','390px')
+                page.wait_for_timeout(250)
                 page.screenshot(path=str(screenshots / 'sharing-mobile.png'), full_page=True)
                 page.get_by_role('button', name='닫기', exact=True).click()
                 page.get_by_role('button', name='메뉴 열기').click()

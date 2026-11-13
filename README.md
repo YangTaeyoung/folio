@@ -4,6 +4,8 @@
 
 Publish static HTML sites with an `index.html` entry point and related assets: interactive reports, prototypes and presentations. Keep them private, share with your organization or selected people, or make a public link. Folio runs on your machine or internal network; its core needs no cloud account, email service, model subscription or Internet connection. Version0.1 requires `index.html`; standalone PDF/image-only publication is not supported.
 
+![Folio artifact library with real published examples](docs/images/library-desktop.png)
+
 First-party code is [MIT licensed](LICENSE). [Installation and operations](INSTALL.md) · [HTTP API](docs/API.md) · [DNS guide](docs/dns.md)
 
 ## Install with one prompt
@@ -107,6 +109,8 @@ go test ./...
 go test -race ./...
 cd web && npm ci && npm run typecheck && npm run build
 ```
+
+[Verification evidence](docs/verification/2026-11-14.md) records local, container and live HTTPS checks. [Try the included examples](examples/README.md).
 
 Storage adapters have HTTP-contract/emulator tests; these do not claim your cloud account has been connected. Live deployment evidence belongs in `docs/verification/`.
 
