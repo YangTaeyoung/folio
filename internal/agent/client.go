@@ -271,22 +271,18 @@ func (c *Client) Publish(ctx context.Context, in PublishInput) (map[string]any, 
 		return nil, e
 	}
 	defer root.Close()
-	if in.Title == "" {
-		if in.ArtifactID != "" {
-			existing, e := c.JSON(ctx, "GET", "/api/artifacts/"+url.PathEscape(in.ArtifactID), nil)
-			if e != nil {
-				return nil, e
-			}
-			a, _ := existing["artifact"].(map[string]any)
-			in.Title, _ = a["title"].(string)
-			if in.Description == "" {
-				in.Description, _ = a["description"].(string)
-			}
-		} else {
-			in.Title = filepath.Base(abs)
-		}
+	if in.Title == "" && in.ArtifactID == "" {
+		in.Title = filepath.Base(abs)
 	}
-	meta := map[string]any{"title": in.Title, "description": in.Description, "message": in.Message}
+	meta := map[string]any{"message": in.Message}
+	// Revision metadata is optional. Omit unspecified fields so the server
+	// atomically preserves its current values, including concurrent metadata edits.
+	if in.ArtifactID == "" || in.Title != "" {
+		meta["title"] = in.Title
+	}
+	if in.ArtifactID == "" || in.Description != "" {
+		meta["description"] = in.Description
+	}
 	if in.Slug != "" {
 		meta["slug"] = in.Slug
 	}

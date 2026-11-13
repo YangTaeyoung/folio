@@ -199,3 +199,43 @@ func TestHTTPErrorNoCredentialLeak(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestRevisionPreservesUnspecifiedMetadata(t *testing.T) {
+	c, closeFixture := fixture(t)
+	defer closeFixture()
+	site := t.TempDir()
+	if e := os.WriteFile(filepath.Join(site, "index.html"), []byte("<h1>revision</h1>"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	ctx := context.Background()
+	created, e := c.Publish(ctx, PublishInput{Path: site, Title: "Original", Description: "Keep this description"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	a := created["artifact"].(map[string]any)
+	id := a["id"].(string)
+	retitled, e := c.Publish(ctx, PublishInput{Path: site, ArtifactID: id, BaseVersionID: a["currentVersionId"].(string), Title: "Renamed"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	a = retitled["artifact"].(map[string]any)
+	if a["title"] != "Renamed" || a["description"] != "Keep this description" {
+		t.Fatalf("retitle lost metadata: %+v", a)
+	}
+	unchanged, e := c.Publish(ctx, PublishInput{Path: site, ArtifactID: id, BaseVersionID: a["currentVersionId"].(string)})
+	if e != nil {
+		t.Fatal(e)
+	}
+	a = unchanged["artifact"].(map[string]any)
+	if a["title"] != "Renamed" || a["description"] != "Keep this description" {
+		t.Fatalf("content-only revision lost metadata: %+v", a)
+	}
+	updated, e := c.Publish(ctx, PublishInput{Path: site, ArtifactID: id, BaseVersionID: a["currentVersionId"].(string), Description: "Changed description"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	a = updated["artifact"].(map[string]any)
+	if a["title"] != "Renamed" || a["description"] != "Changed description" {
+		t.Fatalf("description edit lost title: %+v", a)
+	}
+}
