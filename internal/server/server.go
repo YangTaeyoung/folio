@@ -173,6 +173,7 @@ type Server struct {
 	cfg             Config
 	db              *sql.DB
 	processLock     *processLock
+	stores          map[string]blob.Store
 	st              state
 	key             []byte
 	bootstrap       string
@@ -269,7 +270,7 @@ func New(c Config) (*Server, error) {
 		return nil, e
 	}
 	os.Chmod(filepath.Join(c.DataDir, "folio.db"), 0600)
-	s := &Server{cfg: c, db: db, processLock: processLock, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
+	s := &Server{cfg: c, db: db, processLock: processLock, stores: map[string]blob.Store{}, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
 	if s.factory == nil {
 		s.factory = blob.New
 	}
@@ -329,7 +330,15 @@ func (s *Server) Close() error {
 	if s.dns != nil {
 		dnsErr = s.dns.Close()
 	}
-	return errors.Join(dnsErr, s.db.Close(), s.processLock.Close())
+	errs := []error{dnsErr}
+	for id, store := range s.stores {
+		if closer, ok := store.(io.Closer); ok {
+			errs = append(errs, closer.Close())
+		}
+		delete(s.stores, id)
+	}
+	errs = append(errs, s.db.Close(), s.processLock.Close())
+	return errors.Join(errs...)
 }
 func (s *Server) save() error {
 	raw, e := json.Marshal(s.st)
@@ -401,6 +410,12 @@ func (s *Server) decrypt(v string, out any) error {
 	return json.Unmarshal(raw, out)
 }
 func (s *Server) store(id string) (blob.Store, error) {
+	if s.closed {
+		return nil, errors.New("server is closed")
+	}
+	if store, ok := s.stores[id]; ok {
+		return store, nil
+	}
 	b, ok := s.st.Backends[id]
 	if !ok {
 		return nil, errors.New("storage backend missing")
@@ -418,7 +433,15 @@ func (s *Server) store(id string) (blob.Store, error) {
 	c.Endpoint = b.Endpoint
 	c.Prefix = b.Prefix
 	c.AccountName = b.AccountName
-	return s.factory(c)
+	store, e := s.factory(c)
+	if e != nil {
+		return nil, e
+	}
+	if store == nil {
+		return nil, errors.New("storage factory returned no store")
+	}
+	s.stores[id] = store
+	return store, nil
 }
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

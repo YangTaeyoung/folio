@@ -458,6 +458,10 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 		queueOrphans()
 		return stageErr
 	}
+	if s.closed {
+		queueOrphans()
+		return fail(503, "closed", "Service closed during publication; staged objects will be recovered by maintenance")
+	}
 	p = s.principal(r)
 	if e = s.require(r, p, false, "publish"); e != nil {
 		queueOrphans()

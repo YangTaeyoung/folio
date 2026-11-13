@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/YangTaeyoung/folio/internal/blob"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -36,8 +37,14 @@ func (s *Server) storage(w http.ResponseWriter, r *http.Request, p principal) er
 		}
 		b := Backend{ID: random(), Name: in.Name, Provider: in.Provider, Bucket: in.Bucket, Region: in.Region, Endpoint: in.Endpoint, Prefix: in.Prefix, AccountName: in.AccountName, CreatedAt: now(), CredentialsConfigured: in.AccessKeyID != "" || in.SecretAccessKey != "" || in.ServiceAccountJSON != "" || in.ConnectionString != "" || in.AccountKey != ""}
 		c := blob.Config{ID: b.ID, Name: b.Name, Provider: b.Provider, Root: s.cfg.DataDir + "/objects/" + b.ID, Bucket: b.Bucket, Region: b.Region, Endpoint: b.Endpoint, Prefix: b.Prefix, AccountName: b.AccountName, AccessKeyID: in.AccessKeyID, SecretAccessKey: in.SecretAccessKey, SessionToken: in.SessionToken, ServiceAccountJSON: in.ServiceAccountJSON, ConnectionString: in.ConnectionString, AccountKey: in.AccountKey}
-		if _, e := s.factory(c); e != nil {
+		validation, e := s.factory(c)
+		if e != nil || validation == nil {
 			return fail(400, "invalid_storage_config", "Storage configuration is invalid")
+		}
+		if closer, ok := validation.(io.Closer); ok {
+			if e = closer.Close(); e != nil {
+				return fail(502, "storage_cleanup_failed", "Storage configuration validation could not release its client")
+			}
 		}
 		encrypted, e := s.encrypt(c)
 		if e != nil {
@@ -116,6 +123,15 @@ func (s *Server) storage(w http.ResponseWriter, r *http.Request, p principal) er
 		}
 		if e := s.mutate(func() error { delete(s.st.Backends, id); s.audit(p, "storage.deleted", id, ""); return nil }); e != nil {
 			return e
+		}
+		if store, ok := s.stores[id]; ok {
+			delete(s.stores, id)
+			if closer, ok := store.(io.Closer); ok {
+				if e := closer.Close(); e != nil {
+					s.audit(p, "storage.close_failed", id, "Storage client cleanup failed")
+					s.save()
+				}
+			}
 		}
 		w.WriteHeader(204)
 		return nil

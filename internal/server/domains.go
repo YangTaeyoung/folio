@@ -27,6 +27,7 @@ type domainRecord struct {
 	Domain
 	Challenge, Target, ZoneID, RecordID, TXTRecordID string
 	TunnelRoute                                      bool
+	BrowserDNS                                       bool
 }
 type dnsManager interface {
 	Close() error
@@ -57,6 +58,9 @@ func (s *Server) cloudflare() (*dns.Cloudflare, error) {
 	return &dns.Cloudflare{APIToken: token, APIBase: s.cfg.CloudflareAPIBase, HTTPClient: s.cfg.HTTPClient}, nil
 }
 func dnsFailure(e error) error {
+	if errors.Is(e, dns.ErrBrowserDNSUnavailable) {
+		return fail(409, "browser_dns_unavailable", "Cloudflare browser login did not authorize ownership DNS changes; configure the displayed TXT manually or connect a Cloudflare API token")
+	}
 	if errors.Is(e, dns.ErrCollision) {
 		return fail(409, "dns_collision", "DNS record already exists; Folio will not overwrite it")
 	}
@@ -69,17 +73,37 @@ func (s *Server) verifyDomain(ctx context.Context, p principal, d domainRecord) 
 	if _, exists := s.st.Artifacts[d.ArtifactID]; !exists {
 		return d, fail(409, "artifact_deleted", "The bound artifact no longer exists")
 	}
+	cf, _ := s.cloudflare()
+	certificate, _ := s.dns.(browserDNS)
 	s.mu.Unlock()
 	ok, e := dns.VerifyWithResolver(ctx, s.cfg.DNSResolver, d.Hostname, d.Challenge, d.Target)
-	if d.TunnelRoute {
-		ok, e = dns.VerifyOwnershipWithResolver(ctx, s.cfg.DNSResolver, d.Hostname, d.Challenge)
-		if e == nil && ok {
-			ok = s.originProof(ctx, d)
+
+	// Proxied DNS can intentionally hide its CNAME. Public TXT ownership plus
+	// this installation's exact-host HTTPS challenge proves the actual ingress
+	// for manual DNS as well as API/browser-managed records. Never follow redirects.
+	if !ok || d.TunnelRoute {
+		owned, ownershipErr := dns.VerifyOwnershipWithResolver(ctx, s.cfg.DNSResolver, d.Hostname, d.Challenge)
+		ok = false
+		e = ownershipErr
+		if e == nil && owned {
+			if s.originProof(ctx, d) {
+				ok = true
+			} else if d.TunnelRoute {
+				if d.BrowserDNS && certificate != nil {
+					_, routeErr := certificate.VerifyRoute(ctx, d.Hostname, d.Target)
+					if routeErr != nil && !errors.Is(routeErr, dns.ErrBrowserDNSUnavailable) {
+						e = routeErr
+					}
+				}
+			} else if d.Provider == "cloudflare" && cf != nil && d.ZoneID != "" {
+				ok, e = cf.VerifyRoute(ctx, d.ZoneID, d.Hostname, d.Target)
+			}
 		}
 	}
+
 	s.mu.Lock()
 	current, exists := s.st.Domains[d.ID]
-	if !exists || current.Hostname != d.Hostname || current.Challenge != d.Challenge || current.Target != d.Target || current.TunnelRoute != d.TunnelRoute {
+	if !exists || current.Hostname != d.Hostname || current.Challenge != d.Challenge || current.Target != d.Target || current.TunnelRoute != d.TunnelRoute || current.BrowserDNS != d.BrowserDNS {
 		return d, fail(409, "domain_changed", "Domain changed during verification; retry")
 	}
 	if p.user != nil {
@@ -259,7 +283,7 @@ func (s *Server) domains(w http.ResponseWriter, r *http.Request, p principal) er
 		if e != nil {
 			return e
 		}
-		http.Redirect(w, r, "/domains?domain="+url.QueryEscape(d.ID), 303)
+		http.Redirect(w, r, "/?domain="+url.QueryEscape(d.ID)+"#domains", 303)
 		return nil
 	}
 	parts := strings.Split(strings.TrimPrefix(path, "/api/domains"), "/")
@@ -354,30 +378,15 @@ func (s *Server) domains(w http.ResponseWriter, r *http.Request, p principal) er
 			return fail(409, "manual_dns_required", "Use the displayed DNS records for this provider")
 		}
 		cf, e := s.cloudflare()
+
 		if e != nil {
-			m, me := s.manager()
-			if me != nil {
-				return me
-			}
-			status, me := m.Tunnel()
-			if me != nil || !status.Configured || !contains(status.Hostnames, d.Hostname) {
-				return fail(409, "tunnel_not_configured", "Configure a dedicated tunnel with this exact hostname, or connect an API token")
-			}
-			if me = m.RouteDNS(r.Context(), d.Hostname); me != nil {
-				return dnsFailure(me)
-			}
-			d.Target = status.ID + ".cfargotunnel.com"
-			d.TunnelRoute = true
-			d.Records = dns.DesiredRecords(d.Hostname, d.Challenge, d.Target)
-			if me = s.mutate(func() error { s.st.Domains[id] = d; s.audit(p, "domain.provisioned", id, "tunnel"); return nil }); me != nil {
-				return me
-			}
-			writeJSON(w, 200, map[string]any{"domain": d.Domain, "instructions": "Add the ownership TXT record, start the tunnel, then verify ownership and HTTPS ingress"})
-			return nil
+			return s.provisionBrowserDomain(w, r, p, d)
 		}
-		if d.ZoneID == "" {
-			return fail(400, "zone_required", "Select a Cloudflare zone")
+		zone, err := selectCloudflareZone(r.Context(), cf, d.ZoneID, d.Hostname)
+		if err != nil {
+			return err
 		}
+		d.ZoneID = zone.ID
 
 		if d.RecordID == "" {
 			rid, err := cf.Provision(r.Context(), d.ZoneID, d.Hostname, d.Target)
@@ -408,30 +417,13 @@ func (s *Server) domains(w http.ResponseWriter, r *http.Request, p principal) er
 		return nil
 	}
 	if len(parts) == 2 && r.Method == "DELETE" {
-		if r.URL.Query().Get("deleteDns") == "true" && (d.RecordID != "" || d.TXTRecordID != "") {
-			cf, e := s.cloudflare()
-			if e != nil {
+
+		if r.URL.Query().Get("deleteDns") == "true" {
+			if e := s.deleteDomainDNS(r.Context(), p, &d); e != nil {
 				return e
 			}
-			if d.RecordID != "" {
-				if e = cf.DeleteOwned(r.Context(), d.ZoneID, d.RecordID, d.Hostname, d.Target); e != nil {
-					return dnsFailure(e)
-				}
-				d.RecordID = ""
-				if e = s.mutate(func() error { s.st.Domains[id] = d; s.audit(p, "domain.routing_deleted", id, ""); return nil }); e != nil {
-					return e
-				}
-			}
-			if d.TXTRecordID != "" {
-				if e = cf.DeleteOwned(r.Context(), d.ZoneID, d.TXTRecordID, "_folio."+d.Hostname, d.Challenge); e != nil {
-					return dnsFailure(e)
-				}
-				d.TXTRecordID = ""
-				if e = s.mutate(func() error { s.st.Domains[id] = d; s.audit(p, "domain.ownership_deleted", id, ""); return nil }); e != nil {
-					return e
-				}
-			}
 		}
+
 		if e := s.mutate(func() error { delete(s.st.Domains, id); s.audit(p, "domain.deleted", id, ""); return nil }); e != nil {
 			return e
 		}

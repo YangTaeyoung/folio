@@ -138,7 +138,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 		}
 		return fail(401, "invalid_credentials", "Invalid email or password")
 	case path == "/api/me" && r.Method == "GET":
-		if e := s.require(r, p, false, "read"); e != nil {
+		if e := s.require(r, p, false, ""); e != nil {
 			return e
 		}
 		csrf := ""
@@ -320,6 +320,9 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 		return fail(404, "not_found", "Member not found")
 	}
 	if len(parts) == 3 && parts[2] == "reset-password" && r.Method == "POST" {
+		if id == p.user.ID {
+			return fail(400, "use_password_change", "Use the account password-change form to change your own password")
+		}
 		temp := random()[:24]
 		hash, e := passwordHash(temp)
 		if e != nil {

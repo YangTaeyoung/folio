@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -432,5 +433,164 @@ func TestRelativeModuleAssetRequiresLiveOriginatingSession(t *testing.T) {
 	c.s.ContentHandler().ServeHTTP(w, req)
 	if w.Code != 404 {
 		t.Fatal("module remained readable after session revoked", w.Code)
+	}
+}
+
+func TestAdminCannotResetOwnPasswordAndLoseOneTimeSecret(t *testing.T) {
+	c := fresh(t)
+	c.setup()
+	_, me, _ := c.call("GET", "/api/me", nil)
+	id := me["user"].(map[string]any)["id"].(string)
+	before := c.s.st.Users[id]
+	sessionsBefore := len(c.s.st.Sessions)
+	code, out, _ := c.call("POST", "/api/admin/members/"+id+"/reset-password", map[string]any{})
+	if code != 400 || out["error"].(map[string]any)["code"] != "use_password_change" {
+		t.Fatal(code, out)
+	}
+	after := c.s.st.Users[id]
+	if after.Hash != before.Hash || after.MustChangePassword != before.MustChangePassword || len(c.s.st.Sessions) != sessionsBefore {
+		t.Fatal("self-reset rejection changed credentials")
+	}
+	code, out, _ = c.call("GET", "/api/me", nil)
+	if code != 200 {
+		t.Fatal("self-reset rejection revoked existing session", code, out)
+	}
+}
+
+func TestScopedTokenCanInspectOwnIdentityWithoutReadScope(t *testing.T) {
+	c := fresh(t)
+	c.setup()
+	for _, scope := range []string{"publish", "share"} {
+		t.Run(scope, func(t *testing.T) {
+			code, out, _ := c.call("POST", "/api/tokens", map[string]any{"name": scope + " only", "scopes": []string{scope}})
+			if code != 201 {
+				t.Fatal(code, out)
+			}
+			plain := out["token"].(string)
+			for _, tc := range []struct {
+				path   string
+				status int
+			}{{"/api/me", 200}, {"/api/artifacts", 403}, {"/api/members", 403}} {
+				req := httptest.NewRequest("GET", "http://app.test"+tc.path, nil)
+				req.Header.Set("Authorization", "Bearer "+plain)
+				w := httptest.NewRecorder()
+				c.s.Handler().ServeHTTP(w, req)
+				if w.Code != tc.status {
+					t.Fatal(scope, tc.path, w.Code, w.Body)
+				}
+			}
+		})
+	}
+}
+
+func (c *client) publishFiles(id, base string, paths, bodies []string) (int, map[string]any) {
+	c.t.Helper()
+	b := new(bytes.Buffer)
+	m := multipart.NewWriter(b)
+	files := []map[string]string{}
+	for _, p := range paths {
+		files = append(files, map[string]string{"path": p})
+	}
+	meta, _ := json.Marshal(map[string]any{"title": "Absolute asset artifact", "baseVersionId": base, "files": files})
+	m.WriteField("metadata", string(meta))
+	for i, body := range bodies {
+		part, _ := m.CreateFormFile("file"+fmt.Sprint(i), "ignored")
+		part.Write([]byte(body))
+	}
+	m.Close()
+	endpoint := "/api/artifacts"
+	if id != "" {
+		endpoint += "/" + id + "/versions"
+	}
+	req := httptest.NewRequest("POST", "http://app.test"+endpoint, b)
+	req.Header.Set("Content-Type", m.FormDataContentType())
+	req.Header.Set("Origin", "http://app.test")
+	req.Header.Set("X-CSRF-Token", c.csrf)
+	req.AddCookie(c.cookie)
+	w := httptest.NewRecorder()
+	c.s.Handler().ServeHTTP(w, req)
+	var out map[string]any
+	json.Unmarshal(w.Body.Bytes(), &out)
+	return w.Code, out
+}
+func TestHistoricalViewerPinsRootAbsoluteAssets(t *testing.T) {
+	c := fresh(t)
+	c.setup()
+	code, out := c.publishFiles("", "", []string{"index.html", "assets/app.js"}, []string{`<script type="module" src="/assets/app.js"></script>`, `document.body.dataset.version="v1"`})
+	if code != 201 {
+		t.Fatal(code, out)
+	}
+	a := out["artifact"].(map[string]any)
+	id := a["id"].(string)
+	v1 := a["currentVersionId"].(string)
+	code, out, _ = c.call("POST", "/api/artifacts/"+id+"/launch", map[string]any{"versionId": v1})
+	if code != 200 {
+		t.Fatal(code, out)
+	}
+	grant := out["url"].(string)
+	w := httptest.NewRecorder()
+	c.s.ContentHandler().ServeHTTP(w, httptest.NewRequest("GET", grant, nil))
+	cookie := w.Result().Cookies()[0]
+	origin := strings.Split(grant, "/grant/")[0]
+	code, out = c.publishFiles(id, v1, []string{"index.html", "assets/app.js", "assets/new-only.js"}, []string{`<script type="module" src="/assets/app.js"></script>`, `document.body.dataset.version="v2"`, `document.body.dataset.privateNewVersion="yes"`})
+	if code != 201 {
+		t.Fatal(code, out)
+	}
+	v2 := out["artifact"].(map[string]any)["currentVersionId"].(string)
+	get := func(p string, withCookie bool) (int, string) {
+		req := httptest.NewRequest("GET", origin+p, nil)
+		if withCookie {
+			req.AddCookie(cookie)
+		}
+		w := httptest.NewRecorder()
+		c.s.ContentHandler().ServeHTTP(w, req)
+		return w.Code, w.Body.String()
+	}
+	code, body := get("/assets/app.js", true)
+	if code != 200 || !strings.Contains(body, `"v1"`) {
+		t.Fatal("private historical absolute asset changed", code, body)
+	}
+	code, _ = get("/assets/new-only.js", true)
+	if code != 404 {
+		t.Fatal("newer-only private asset leaked through v1 viewer", code)
+	}
+	code, _ = get("/render/"+id+"/"+v2+"/assets/app.js", true)
+	if code != 404 {
+		t.Fatal("private viewer read ungranted explicit version", code)
+	}
+	c.call("PATCH", "/api/artifacts/"+id+"/sharing", map[string]any{"visibility": "public", "memberIds": []string{}, "expiresAt": nil})
+	code, body = get("/assets/app.js", true)
+	if code != 200 || !strings.Contains(body, `"v1"`) {
+		t.Fatal("public historical viewer mixed new assets", code, body)
+	}
+	code, body = get("/assets/app.js", false)
+	if code != 200 || !strings.Contains(body, `"v2"`) {
+		t.Fatal("anonymous public root did not use current publication", code, body)
+	}
+}
+
+func TestServiceWorkerRegistrationDeniedWhileOrdinaryWorkerAssetWorks(t *testing.T) {
+	c := fresh(t)
+	c.setup()
+	code, out := c.publishFiles("", "", []string{"index.html", "worker.js", "sw.js"}, []string{"<title>Workers</title>", `postMessage("ordinary worker works")`, `self.addEventListener("fetch",event=>event.respondWith(new Response("persisted")))`})
+	if code != 201 {
+		t.Fatal(code, out)
+	}
+	a := out["artifact"].(map[string]any)
+	c.call("PATCH", "/api/artifacts/"+a["id"].(string)+"/sharing", map[string]any{"visibility": "public", "memberIds": []string{}, "expiresAt": nil})
+	origin := "http://" + a["slug"].(string) + ".content.test"
+	req := httptest.NewRequest("GET", origin+"/sw.js", nil)
+	req.Header.Set("Service-Worker", "script")
+	w := httptest.NewRecorder()
+	c.s.ContentHandler().ServeHTTP(w, req)
+	if w.Code != 403 || w.Header().Get("Cache-Control") != "no-store" || strings.Contains(w.Body.String(), `addEventListener`) {
+		t.Fatal("service worker registration script exposed", w.Code, w.Header(), w.Body)
+	}
+	req = httptest.NewRequest("GET", origin+"/worker.js", nil)
+	req.Header.Set("Sec-Fetch-Dest", "worker")
+	w = httptest.NewRecorder()
+	c.s.ContentHandler().ServeHTTP(w, req)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "ordinary worker works") || !strings.Contains(w.Header().Get("Content-Security-Policy"), "worker-src 'self' blob:") {
+		t.Fatal("ordinary worker blocked", w.Code, w.Header(), w.Body)
 	}
 }

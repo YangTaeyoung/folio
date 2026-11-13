@@ -96,7 +96,7 @@ func (s *Server) ContentHandler() http.Handler {
 		defer s.mu.Unlock()
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-forms allow-downloads allow-same-origin; default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; connect-src 'self'; object-src 'none'; base-uri 'self'")
+		w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-forms allow-downloads allow-same-origin; default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'")
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Method != "GET" && r.Method != "HEAD" {
 			http.NotFound(w, r)
@@ -104,6 +104,14 @@ func (s *Server) ContentHandler() http.Handler {
 		}
 		if s.closed {
 			http.NotFound(w, r)
+			return
+		}
+		// The Service Workers update algorithm mandates this header for the
+		// registration script fetch. Persisted interception would bypass future
+		// network authorization; ordinary Worker fetches remain allowed.
+		// https://www.w3.org/TR/service-workers/#service-worker-script-request
+		if strings.EqualFold(strings.TrimSpace(r.Header.Get("Service-Worker")), "script") {
+			http.Error(w, "Service worker registration is disabled for artifact content", http.StatusForbidden)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/.well-known/folio-challenge/") {
@@ -194,6 +202,9 @@ func (s *Server) ContentHandler() http.Handler {
 		if !safePath(filePath) {
 			http.NotFound(w, r)
 			return
+		}
+		if versionID == "" && validViewer {
+			versionID = viewer.VersionID
 		}
 		v, exists := s.version(a, versionID)
 		if !exists {
