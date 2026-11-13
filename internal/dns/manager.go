@@ -50,6 +50,8 @@ type Manager struct {
 	DataDir, AppURL, ContentURL, Cloudflared string
 	AppOrigin, ContentOrigin                 string
 	LoginTimeout                             time.Duration
+	DNSAPIBase                               string
+	HTTPClient                               *http.Client
 	mu                                       sync.Mutex
 	opMu                                     sync.Mutex
 	logins                                   map[string]*loginProcess
@@ -404,6 +406,15 @@ func (m *Manager) ConfigureTunnel(ctx context.Context, name string, hostnames []
 	if _, err = regularRead(filepath.Join(dir, "cert.pem")); err != nil {
 		return TunnelStatus{}, errors.New("Cloudflare login is required")
 	}
+	zone, err := m.SelectedZone(ctx)
+	if err != nil {
+		return TunnelStatus{}, err
+	}
+	for _, host := range hosts {
+		if !withinZone(host, zone.Name) {
+			return TunnelStatus{}, errors.New("hostname is outside the browser-login selected Cloudflare zone")
+		}
+	}
 	s, err := m.Tunnel()
 	if err != nil {
 		return s, err
@@ -494,6 +505,13 @@ func (m *Manager) RouteDNS(ctx context.Context, hostname string) error {
 	}
 	if !contains(s.Hostnames, canonical(hostname)) {
 		return errors.New("hostname must first be included in the explicit Folio tunnel ingress")
+	}
+	zone, err := m.SelectedZone(ctx)
+	if err != nil {
+		return err
+	}
+	if !withinZone(hostname, zone.Name) {
+		return errors.New("hostname is outside the browser-login selected Cloudflare zone")
 	}
 	dir, err := m.directory()
 	if err != nil {

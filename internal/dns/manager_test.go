@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 const fakeTunnelID = "00000000-1111-2222-3333-444444444444"
 
 func certificate() []byte {
-	return pem.EncodeToMemory(&pem.Block{Type: "ARGO TUNNEL TOKEN", Bytes: []byte(`{"accountID":"test-account","apiToken":"secret-certificate"}`)})
+	return pem.EncodeToMemory(&pem.Block{Type: "ARGO TUNNEL TOKEN", Bytes: []byte(`{"accountID":"test-account","zoneID":"selected-zone","apiToken":"secret-certificate"}`)})
 }
 
 // The executable helper exercises real process creation, cancellation, output
@@ -116,7 +117,16 @@ func fakeManager(t *testing.T) *Manager {
 	t.Setenv("FOLIO_DNS_HELPER", "1")
 	t.Setenv("FOLIO_DNS_DEFAULT_CERT", source)
 	t.Setenv("TUNNEL_FORCE_PROVISIONING_DNS", "true")
-	m := &Manager{DataDir: filepath.Join(dir, "data"), AppURL: "https://console.example.com", ContentURL: "https://{artifact}.content.example.com", Cloudflared: wrapper, defaultCert: source, LoginTimeout: 3 * time.Second}
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/zones/selected-zone" {
+			t.Error("unexpected helper DNS path", r.URL.Path)
+			w.WriteHeader(404)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]any{"success": true, "result": Zone{ID: "selected-zone", Name: "example.com"}})
+	}))
+	t.Cleanup(provider.Close)
+	m := &Manager{DataDir: filepath.Join(dir, "data"), AppURL: "https://console.example.com", ContentURL: "https://{artifact}.content.example.com", Cloudflared: wrapper, defaultCert: source, DNSAPIBase: provider.URL, LoginTimeout: 3 * time.Second}
 	t.Cleanup(func() { m.Close() })
 	return m
 }

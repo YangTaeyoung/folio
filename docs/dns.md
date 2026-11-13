@@ -59,8 +59,24 @@ because they may contain secrets. Ambient `TUNNEL_*` / `CLOUDFLARED_*` options a
 stripped from child environments; system HOME is unchanged. A private empty
 command configuration prevents adopting unrelated cloudflared configuration.
 
-Browser login does not create a tunnel, start a connector, provision arbitrary
-TXT records, or make a local-only installation publicly reachable.
+Browser login does not create a tunnel, start a connector, or make a local-only
+installation publicly reachable. Explicit `Manager.ProvisionOwnership` can try
+collision-safe ownership TXT creation using the certificate's contained API token,
+without asking the administrator to copy that token. `SelectedZone` first reads
+the certificate-selected zone through the generic API; every hostname must equal
+that zone or lie below its exact DNS label boundary. The same zone check precedes
+official tunnel DNS routing, preventing a foreign name from being treated as a
+relative name inside the selected zone.
+
+Cloudflared's source confirms the certificate contains ZoneID/AccountID/APIToken
+and sends the token as Bearer authorization, but the official documented tunnel
+route endpoint is distinct from generic DNS record CRUD. Its published contract
+does not guarantee the generated token's generic Zone Read / DNS Edit policy.
+Folio therefore reports successful automatic ownership only after the API creates
+the TXT record and returns its ID. A 401/403 returns `ErrBrowserDNSUnavailable` with
+manual/API-token fallback; it never treats CNAME-only provisioning as complete.
+`Manager.VerifyRoute` can read the exact CNAME through the same private certificate
+client when authorized. No exported Manager operation returns the token.
 
 ## Dedicated tunnel lifecycle
 
@@ -138,6 +154,10 @@ Official references inspected on 2026-11-14:
 - [Proxied DNS CNAME visibility](https://developers.cloudflare.com/tunnel/troubleshooting/https-origins/).
 - [cloudflared 2026.10.3 login source](https://github.com/cloudflare/cloudflared/blob/2026.10.3/cmd/cloudflared/tunnel/login.go#L65-L157): fixed default write path, overwrite refusal, private certificate file.
 - [cloudflared tunnel creation source](https://github.com/cloudflare/cloudflared/blob/2026.10.3/cmd/cloudflared/tunnel/subcommand_context.go#L121-L190): explicit credential file and JSON create output.
+- [cloudflared certificate schema](https://github.com/cloudflare/cloudflared/blob/2026.10.3/credentials/origin_cert.go#L20-L25) and [private API client construction](https://github.com/cloudflare/cloudflared/blob/2026.10.3/credentials/credentials.go#L44-L58).
+- [cloudflared Bearer authorization and selected-zone tunnel endpoint](https://github.com/cloudflare/cloudflared/blob/2026.10.3/cfapi/base_client.go#L44-L107).
+- [Selected zone details API](https://developers.cloudflare.com/api/resources/zones/methods/get/).
+- [Cloudflare permission definitions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/).
 - [cloudflared DNS route implementation](https://github.com/cloudflare/cloudflared/blob/2026.10.3/cfapi/hostname.go#L35-L100): overwrite flag and unchanged-route result.
 - [cloudflared readiness command](https://github.com/cloudflare/cloudflared/blob/2026.10.3/cmd/cloudflared/tunnel/subcommands.go#L479-L503).
 - [Domain Connect specification](https://github.com/Domain-Connect/spec/blob/master/Domain%20Connect%20Spec%20Draft.adoc): discovery, provider settings, template support, synchronous apply, callback and state.
@@ -148,7 +168,8 @@ a real child executable standing in for cloudflared. It exercises collision
 refusal, exact record deletion, pagination, TXT binding, destination refusal,
 unsupported templates, signed state tampering/replay/expiry, browser-login
 completion/timeout, private file modes, dedicated connector start/health/stop,
-ambient overwrite-option isolation, and diagnostic redaction. `go vet` also passes.
+ambient overwrite-option isolation, certificate-authenticated TXT/route API calls,
+selected-zone boundary checks, permission-denied fallback, and diagnostic redaction. `go vet` also passes.
 The installed official cloudflared 2026.10.3 accepted a generated JSON ingress
 configuration with `tunnel --config <file> ingress validate` (offline, result OK).
 These package tests do not prove live account authorization, a registered Domain

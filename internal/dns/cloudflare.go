@@ -18,6 +18,14 @@ type Cloudflare struct {
 	APIToken, APIBase string
 	HTTPClient        *http.Client
 }
+
+// ProviderError contains only non-secret status and numeric provider code.
+type ProviderError struct{ HTTPStatus, Code int }
+
+func (e *ProviderError) Error() string {
+	return fmt.Sprintf("Cloudflare request rejected (HTTP %d, code %d)", e.HTTPStatus, e.Code)
+}
+
 type cfRecord struct{ ID, Type, Name, Content, Comment string }
 type cfEnvelope struct {
 	Success    bool
@@ -76,7 +84,7 @@ func (c *Cloudflare) request(ctx context.Context, method, path string, body, out
 		if len(env.Errors) > 0 {
 			code = env.Errors[0].Code
 		}
-		return 0, fmt.Errorf("Cloudflare request rejected (HTTP %d, code %d)", resp.StatusCode, code)
+		return 0, &ProviderError{HTTPStatus: resp.StatusCode, Code: code}
 	}
 	if out != nil {
 		if err = json.Unmarshal(env.Result, out); err != nil {
@@ -195,4 +203,21 @@ func (c *Cloudflare) VerifyRoute(ctx context.Context, zoneID, hostname, target s
 		}
 	}
 	return false, nil
+}
+
+// Zone reads one explicitly selected zone. It does not discover or adopt zones.
+func (c *Cloudflare) Zone(ctx context.Context, zoneID string) (Zone, error) {
+	path, err := zonePath(zoneID)
+	if err != nil {
+		return Zone{}, err
+	}
+	var zone Zone
+	if _, err = c.request(ctx, http.MethodGet, strings.TrimSuffix(path, "/dns_records"), nil, &zone); err != nil {
+		return Zone{}, err
+	}
+	if zone.ID != zoneID || ValidateHostname(zone.Name) != nil {
+		return Zone{}, errors.New("Cloudflare returned an invalid selected zone")
+	}
+	zone.Name = canonical(zone.Name)
+	return zone, nil
 }
