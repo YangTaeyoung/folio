@@ -1,0 +1,1 @@
+import {next} from './counter.js'; let count=0; document.querySelector('#module-status').textContent='ES modules + relative assets ready';document.querySelector('#counter').onclick=()=>{count=next(count);document.querySelector('#counter').textContent=`함께 만들기 · ${count}`};
