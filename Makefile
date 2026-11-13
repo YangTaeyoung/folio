@@ -4,6 +4,7 @@ LDFLAGS = -s -w -X main.version=$(VERSION)
 web:
 	cd web && npm ci && npm run build
 	mkdir -p internal/webassets/dist
+	find internal/webassets/dist -depth -mindepth 1 ! -name .gitkeep -delete
 	cp -R web/dist/. internal/webassets/dist/
 build: web
 	mkdir -p dist
