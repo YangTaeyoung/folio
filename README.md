@@ -8,6 +8,8 @@ Publish static HTML sites with an `index.html` entry point and related assets: i
 
 First-party code is [MIT licensed](LICENSE). [Installation and operations](INSTALL.md) · [HTTP API](docs/API.md) · [DNS guide](docs/dns.md)
 
+[Explore the interactive product tour](https://folio.melona.cloud/s/demo)
+
 ## Install with one prompt
 
 Paste this into your coding agent:

@@ -67,12 +67,10 @@ export function useResource<T>(path: string, revision = 0) {
   return { data, error, loading, reload: () => setKey((n) => n + 1), setData };
 }
 export function PageHeading({
-  eyebrow,
   title,
   description,
   action,
 }: {
-  eyebrow: string;
   title: string;
   description: string;
   action?: React.ReactNode;
@@ -80,7 +78,6 @@ export function PageHeading({
   return (
     <header className="page-heading">
       <div>
-        <small className="eyebrow">{eyebrow}</small>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
@@ -100,8 +97,7 @@ export function MembersPage({ self }: { self: User }) {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / MEMBERS"
-        title="함께 만드는 사람들"
+        title="구성원"
         description="구성원 계정을 만들고 조직의 접근 권한을 관리합니다."
         action={
           <button className="button primary" onClick={() => setShow(true)}>
@@ -438,8 +434,7 @@ export function StoragePage() {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / STORAGE"
-        title="보관할 곳과 보관하는 방법"
+        title="저장소와 보관"
         description="데이터는 선택한 저장소에, 보관 정책은 팀의 기준에 맞게."
         action={
           <button
@@ -461,7 +456,7 @@ export function StoragePage() {
           <HardDrive size={28} />
         </div>
         <div>
-          <small className="eyebrow">WORKSPACE STORAGE</small>
+          <span className="storage-caption">사용 중인 용량</span>
           <h2>
             {bytes(usage.data?.usage.usedBytes || 0)}{" "}
             <span>/ {bytes(p?.quotaBytes || 0)}</span>
@@ -1011,8 +1006,7 @@ export function DomainsPage() {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / DOMAINS"
-        title="작업에 어울리는 주소"
+        title="도메인"
         description="내부 도메인 또는 인터넷 주소를 아티팩트에 연결합니다."
         action={
           <button className="button primary" onClick={() => setShow(true)}>
@@ -1494,8 +1488,7 @@ export function AgentsPage() {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / AGENTS"
-        title="에이전트에게도 같은 작업 공간을"
+        title="에이전트 연결"
         description="모델이나 구독에 종속되지 않는 MCP 도구와 CLI를 연결하세요."
       />
       <ErrorBox error={r.error || a.error} />
@@ -1674,8 +1667,7 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / SETTINGS"
-        title="우리 팀의 작업 공간"
+        title="조직 설정"
         description="조직 이름과 설치 정보를 확인합니다."
       />
       <ErrorBox error={r.error || a.error} />
@@ -1750,8 +1742,7 @@ export function AuditPage() {
   return (
     <>
       <PageHeading
-        eyebrow="WORKSPACE / AUDIT"
-        title="작업 공간의 기록"
+        title="변경 기록"
         description="계정, 공유, 게시와 보관 정책의 변경을 확인합니다."
         action={
           <button className="button secondary" onClick={r.reload}>
@@ -1809,7 +1800,6 @@ export function AccountPage({
   return (
     <>
       <PageHeading
-        eyebrow="ACCOUNT / PROFILE"
         title="내 계정"
         description="계정 정보를 확인하고 비밀번호를 변경합니다."
       />

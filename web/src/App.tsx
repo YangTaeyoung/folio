@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   ArrowUpRight,
-  ChevronDown,
   Globe,
   Grid2X2,
   HardDrive,
@@ -271,6 +270,54 @@ function Workspace({
       : "library";
   });
   const [mobile, setMobile] = useState(false);
+  const [compactNav, setCompactNav] = useState(
+    () => window.matchMedia("(max-width: 900px)").matches,
+  );
+  const sidebarRef = useRef<HTMLElement>(null);
+  const closeNavRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const changed = () => {
+      setCompactNav(media.matches);
+      if (!media.matches) setMobile(false);
+    };
+    media.addEventListener("change", changed);
+    return () => media.removeEventListener("change", changed);
+  }, []);
+  useEffect(() => {
+    if (!mobile || !compactNav) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeNavRef.current?.focus();
+    function trap(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMobile(false);
+      }
+      if (e.key !== "Tab") return;
+      const items = [
+        ...(sidebarRef.current?.querySelectorAll<HTMLElement>(
+          'a[href],button:not(:disabled),input:not(:disabled),[tabindex="0"]',
+        ) || []),
+      ].filter((el) => el.offsetParent !== null);
+      const first = items[0],
+        last = items.at(-1);
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    }
+    document.addEventListener("keydown", trap);
+    return () => {
+      document.removeEventListener("keydown", trap);
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
+  }, [mobile, compactNav]);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("updated");
@@ -351,45 +398,70 @@ function Workspace({
   const library = ["library", "mine", "shared", "archive"].includes(view);
   const title =
     view === "mine"
-      ? "내가 만든 작업의 서재"
+      ? "내 아티팩트"
       : view === "shared"
-        ? "함께 보는 팀의 작업들"
+        ? "조직 공유함"
         : view === "archive"
-          ? "오래 간직할 작업들"
-          : "팀의 작업이 모이는 곳";
+          ? "아카이브"
+          : "전체 아티팩트";
   return (
     <div className="app-shell">
       {mobile && (
         <button
           className="nav-scrim"
           aria-label="탐색 닫기"
+          tabIndex={-1}
+          aria-hidden="true"
           onClick={() => setMobile(false)}
         />
       )}
-      <aside className={`sidebar ${mobile ? "open" : ""}`}>
-        <a
-          className="brand-link"
-          href="/#library"
-          onClick={(e) => {
-            e.preventDefault();
-            go("library");
-          }}
+      <aside
+        ref={sidebarRef}
+        id="workspace-navigation"
+        className={`sidebar ${mobile ? "open" : ""}`}
+        inert={compactNav && !mobile}
+        role={compactNav && mobile ? "dialog" : undefined}
+        aria-modal={compactNav && mobile ? true : undefined}
+        aria-label="작업 공간 탐색"
+      >
+        <div className="sidebar-heading">
+          <a
+            className="brand-link"
+            href="/#library"
+            onClick={(e) => {
+              e.preventDefault();
+              go("library");
+            }}
+          >
+            <Brand />
+          </a>
+          <button
+            ref={closeNavRef}
+            className="icon-button sidebar-close"
+            aria-label="메뉴 닫기"
+            onClick={() => setMobile(false)}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <button
+          className="workspace-switch"
+          onClick={() => go(isAdmin ? "settings" : "account")}
+          aria-label="작업 공간 설정"
         >
-          <Brand />
-        </a>
-        <div className="workspace-switch">
           <span className="workspace-monogram">
             {session.organization.name.slice(0, 1)}
           </span>
           <b>{session.organization.name}</b>
-          <ChevronDown size={15} />
-        </div>
+          <Settings size={15} />
+        </button>
         <div className="nav-label">라이브러리</div>
         <nav aria-label="아티팩트 탐색">
           {nav.map((item) => (
             <button
               key={item.id}
               className={view === item.id ? "active" : ""}
+              aria-current={view === item.id ? "page" : undefined}
               onClick={() => go(item.id as View)}
             >
               <item.icon size={18} />
@@ -406,6 +478,7 @@ function Workspace({
               <button
                 key={item.id}
                 className={view === item.id ? "active" : ""}
+                aria-current={view === item.id ? "page" : undefined}
                 onClick={() => go(item.id as View)}
               >
                 <item.icon size={18} />
@@ -445,17 +518,16 @@ function Workspace({
               <LogOut size={17} />
             </button>
           </div>
-          <span className="local-status">
-            <i />
-            우리 서버에 보관 중
-          </span>
+          <span className="local-status">Folio · 자체 호스팅</span>
         </div>
       </aside>
-      <div className="main-shell">
+      <div className="main-shell" inert={compactNav && mobile}>
         <header className="mobile-header">
           <button
             className="icon-button"
             aria-label="메뉴 열기"
+            aria-expanded={mobile}
+            aria-controls="workspace-navigation"
             onClick={() => setMobile(true)}
           >
             <Menu size={22} />
@@ -469,20 +541,24 @@ function Workspace({
             <Plus size={21} />
           </button>
         </header>
+        <div className="workspace-topbar">
+          <span>{session.organization.name}</span>
+          <span className="breadcrumb-divider">/</span>
+          <b>{[...nav, ...management].find((n) => n.id === view)?.label}</b>
+          <button
+            className="topbar-account"
+            onClick={() => go("account")}
+            aria-label="내 계정 열기"
+          >
+            {session.user.name.slice(0, 1)}
+          </button>
+        </div>
         <main className={`workspace-main ${library ? "library-main" : ""}`}>
           <ErrorBox error={error} />
           {library ? (
             <>
               <header className="library-header">
                 <div>
-                  <small className="eyebrow">
-                    WORKSPACE LIBRARY /{" "}
-                    {view === "mine"
-                      ? "PERSONAL"
-                      : view === "archive"
-                        ? "ARCHIVE"
-                        : "COLLECTION"}
-                  </small>
                   <h1>{title}</h1>
                   <p>
                     {view === "archive"
@@ -491,7 +567,7 @@ function Workspace({
                         ? "보고서부터 작은 웹앱까지, 내가 만든 아티팩트를 모아보세요."
                         : view === "shared"
                           ? "조직 전체 또는 나에게 공유된 아티팩트를 볼 수 있습니다."
-                          : "보고서, 문서, 프로토타입. 사람과 에이전트가 만든 결과를 한곳에서."}
+                          : "문서, 웹앱, 프로토타입. 팀과 에이전트가 만든 결과물을 관리하세요."}
                   </p>
                 </div>
                 <button
@@ -502,29 +578,11 @@ function Workspace({
                 </button>
               </header>
               <div className="library-toolbar">
-                <div className="tabs">
-                  <button
-                    className={view === "library" ? "active" : ""}
-                    onClick={() => go("library")}
-                  >
-                    전체
-                  </button>
-                  <button
-                    className={view === "mine" ? "active" : ""}
-                    onClick={() => go("mine")}
-                  >
-                    내 작업
-                  </button>
-                  <button
-                    className={view === "shared" ? "active" : ""}
-                    onClick={() => go("shared")}
-                  >
-                    공유됨
-                  </button>
-                  {view === "archive" && (
-                    <button className="active">아카이브</button>
-                  )}
-                </div>
+                <span className="result-count">
+                  {r.loading
+                    ? "불러오는 중…"
+                    : `${artifacts.length}개 아티팩트`}
+                </span>
                 <div className="toolbar-controls">
                   <div className="input-icon search-field">
                     <Search size={16} />
@@ -605,12 +663,6 @@ function Workspace({
                       />
                     ))}
                   </div>
-                  <footer className="library-count">
-                    {artifacts.length}개 아티팩트 <span>·</span>{" "}
-                    {r.loading
-                      ? "새로 불러오는 중"
-                      : "모든 변경 사항이 저장되었습니다."}
-                  </footer>
                 </>
               )}
             </>

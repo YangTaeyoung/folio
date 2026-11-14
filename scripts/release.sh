@@ -14,8 +14,9 @@ for target_os in linux darwin windows; do
   executable=folio
   if [ "$target_os" = windows ]; then executable=folio.exe;fi
   CGO_ENABLED=0 GOOS=$target_os GOARCH=$target_arch go build -trimpath -ldflags "-s -w -buildid= -X main.version=$version" -o "$work/$executable" ./cmd/folio
-  cp LICENSE README.md INSTALL.md "$work/"
-  if [ "$target_os" = windows ]; then (cd "$work" && zip -X -q "$release_root/$out/$name.zip" "$executable" LICENSE README.md INSTALL.md); else tar -czf "$out/$name.tar.gz" -C "$work" "$executable" LICENSE README.md INSTALL.md;fi
+  cp LICENSE README.md INSTALL.md THIRD_PARTY_NOTICES.md "$work/"
+  cp web/public/fonts/OFL.txt "$work/PRETENDARD-OFL.txt"
+  if [ "$target_os" = windows ]; then (cd "$work" && zip -X -q "$release_root/$out/$name.zip" "$executable" LICENSE README.md INSTALL.md THIRD_PARTY_NOTICES.md PRETENDARD-OFL.txt); else tar -czf "$out/$name.tar.gz" -C "$work" "$executable" LICENSE README.md INSTALL.md THIRD_PARTY_NOTICES.md PRETENDARD-OFL.txt;fi
   rm -rf "$work"
  done
 done

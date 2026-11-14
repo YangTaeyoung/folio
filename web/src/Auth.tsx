@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ArrowRight, BookOpen, KeyRound, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  FileCode,
+  KeyRound,
+  ShieldCheck,
+  Layers,
+  Share2,
+} from "lucide-react";
 import { api, json, setCSRF } from "./api";
 import type { Session } from "./types";
 import { ErrorBox, Field, Spinner, useAction } from "./ui";
@@ -7,7 +14,7 @@ export function Brand() {
   return (
     <span className="brand">
       <img src="/favicon.svg" alt="" />
-      folio<span className="brand-dot">.</span>
+      Folio
     </span>
   );
 }
@@ -31,31 +38,37 @@ export default function Auth({
       <section className="auth-story">
         <Brand />
         <div>
-          <small className="eyebrow">YOUR WORK, KEPT TOGETHER</small>
           <h1>
-            만든 것을 모으고,
+            만든 결과물을,
             <br />
-            필요한 사람과 나누세요.
+            하나의 작업 공간에.
           </h1>
           <p>
-            보고서부터 프로토타입까지.
-            <br />
-            사람과 에이전트가 함께 쓰는 팀의 아티팩트 서재.
+            문서와 작은 웹앱부터 팀의 프로토타입까지.
+            <br />내 서버에 게시하고, 필요한 사람에게 공유하세요.
           </p>
-          <div className="story-paper">
-            <BookOpen size={30} />
-            <div className="paper-rule" />
-            <b>
-              A space for
-              <br />
-              your best work.
-            </b>
-            <div className="paper-lines">
-              <i />
-              <i />
-              <i />
+          <div className="auth-artifact-stack" aria-hidden="true">
+            <div className="auth-artifact">
+              <FileCode size={24} />
+              <span>Product prototype</span>
+              <div className="auth-preview">
+                <i />
+                <i />
+                <i />
+              </div>
+              <small>HTML · Interactive</small>
             </div>
-            <span>FOLIO / YOUR OWN WORKSPACE</span>
+            <div className="auth-artifact">
+              <Layers size={24} />
+              <span>Project brief</span>
+              <div className="auth-document-lines">
+                <i />
+                <i />
+                <i />
+              </div>
+              <small>Folio workspace</small>
+              <Share2 size={17} />
+            </div>
           </div>
         </div>
         <footer>
@@ -83,10 +96,8 @@ export default function Auth({
             });
           }}
         >
-          <small className="eyebrow">
-            {setup ? "WELCOME TO FOLIO" : "WELCOME BACK"}
-          </small>
-          <h2>{setup ? "우리 팀의 공간 만들기" : "작업 공간에 로그인"}</h2>
+          <Brand />
+          <h2>{setup ? "작업 공간 만들기" : "작업 공간에 로그인"}</h2>
           <p className="subtle">
             {setup
               ? "첫 관리자 계정을 만들고 아티팩트를 모아보세요."

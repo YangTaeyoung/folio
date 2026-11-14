@@ -57,11 +57,13 @@ export function ArtifactPreview({
 }) {
   const [url, setURL] = useState("");
   const [error, setError] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const target = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let active = true;
     setURL("");
     setError("");
+    setLoaded(false);
     const launch = () => {
       api<{ url: string }>(
         `/api/artifacts/${artifact.id}/launch`,
@@ -93,11 +95,21 @@ export function ArtifactPreview({
     };
   }, [artifact.id, artifact.currentVersionId]);
   return (
-    <div ref={target} className={`artifact-preview ${className}`}>
+    <div
+      ref={target}
+      className={`artifact-preview ${className}`}
+      aria-busy={!error && !loaded}
+    >
+      {url && !loaded && (
+        <div className="preview-loading">
+          <Spinner />
+        </div>
+      )}
       {url ? (
         <iframe
           title={`${artifact.title} 미리보기`}
           src={url}
+          onLoad={() => setLoaded(true)}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
         />
       ) : (
@@ -142,17 +154,19 @@ export function ArtifactCard({
           <VisibilityIcon value={artifact.visibility} />
           {visibilityLabels[artifact.visibility]}
         </span>
-        <button
-          className="icon-button"
-          onClick={onShare}
-          aria-label={`${artifact.title} 공유`}
-          title="공유"
-        >
-          <Share2 size={16} />
-        </button>
       </div>
       <div className="artifact-time">
         {relative(artifact.updatedAt)} 수정 · {bytes(artifact.sizeBytes)}
+      </div>
+      <div className="artifact-card-actions">
+        <button onClick={onOpen}>
+          <ArrowUpRight size={16} />
+          열기
+        </button>
+        <button onClick={onShare} aria-label={`${artifact.title} 공유`}>
+          <Share2 size={15} />
+          공유
+        </button>
       </div>
     </article>
   );
@@ -201,18 +215,52 @@ export function SharePanel({
             </small>
           </div>
         </div>
-        <Field label="공유 범위">
-          <select
-            disabled={!canManage}
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as Visibility)}
-          >
-            <option value="private">나만 보기</option>
-            <option value="organization">조직 구성원</option>
-            <option value="selected">선택한 구성원</option>
-            <option value="public">링크가 있는 모든 사람</option>
-          </select>
-        </Field>
+        <fieldset className="visibility-options">
+          <legend>공유 범위</legend>
+          {(
+            [
+              {
+                value: "private",
+                label: "나만 보기",
+                description: "작성자와 관리자만 접근",
+              },
+              {
+                value: "organization",
+                label: "조직 구성원",
+                description: "로그인한 모든 조직 구성원",
+              },
+              {
+                value: "selected",
+                label: "선택한 구성원",
+                description: "지정한 구성원에게만 공유",
+              },
+              {
+                value: "public",
+                label: "링크가 있는 모든 사람",
+                description: "로그인 없이 누구나 열람",
+              },
+            ] as const
+          ).map((option) => (
+            <label
+              className={`visibility-option ${visibility === option.value ? "selected" : ""}`}
+              key={option.value}
+            >
+              <VisibilityIcon value={option.value} size={19} />
+              <span>
+                <b>{option.label}</b>
+                <small>{option.description}</small>
+              </span>
+              <input
+                type="radio"
+                name="visibility"
+                value={option.value}
+                checked={visibility === option.value}
+                disabled={!canManage}
+                onChange={() => setVisibility(option.value)}
+              />
+            </label>
+          ))}
+        </fieldset>
         {visibility === "selected" && (
           <section className="share-people">
             <label className="field">
