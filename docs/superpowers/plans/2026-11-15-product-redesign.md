@@ -41,5 +41,5 @@ Independent owner: examples/folio-showcase/** only; consume existing product tru
 ## Task4: Inspect, review, deliver
 - [x] One batched desktop/mobile capture of library/share/auth/storage and public tour; fix material gaps in one batch and confirm.
 - [x] Run detector once, fresh finish review with screenshot/comp/source packet; resolve its material findings, document DESIGN.md.
-- [ ] Build combined binary; validate real API-backed UI workflows and live HTTPS with existing private credentials kept local.
-- [ ] Save real screenshots; push/CI and publish updated distribution after validated changes. Never rewrite v0.1.0 or delete user data.
+- [x] Build combined binary; validate real API-backed UI workflows and live HTTPS with existing private credentials kept local.
+- [x] Save real screenshots; push/CI and publish updated distribution after validated changes. Never rewrite v0.1.0 or delete user data.
