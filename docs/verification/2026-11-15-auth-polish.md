@@ -16,4 +16,10 @@ References inspected directly: [Vercel login](https://vercel.com/login), [Resend
 - The existing 20-workflow browser suite passed; password-toggle assertions were added to the real member sign-in flow.
 - Impeccable detector found no issues. No external runtime assets or authentication providers were added.
 
-Source CI, distribution and live HTTPS proof are recorded after delivery.
+## Delivery evidence
+
+- Source: `9473294146fb8dc3f5951884080343fa03e28c5a`, tagged `v0.2.1`. [Source CI](https://github.com/YangTaeyoung/folio/actions/runs/43724803845) passed all required checks.
+- The dedicated [HTTPS installation](https://folio.melona.cloud) runs the clean tagged native build (`vcs.modified=false`). Fresh anonymous contexts verified the 420px desktop form, mobile layout, removal of the previous story pane, password visibility and account help. The existing administrator account successfully signed in; no page errors occurred.
+- The release build is tracked in [this workflow](https://github.com/YangTaeyoung/folio/actions/runs/43725029106); public distribution is available through the [v0.2.1 release page](https://github.com/YangTaeyoung/folio/releases/tag/v0.2.1).
+- Existing accounts, artifact data, domains, content-origin separation and public-demo history are preserved. This patch changes only the authentication presentation and its local interactions.
+
