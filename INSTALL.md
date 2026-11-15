@@ -90,3 +90,7 @@ make release VERSION=v0.1.0
 `make build` builds the UI, copies it into the embed directory, and builds the combined executable. A source-only `go build ./cmd/folio` compiles, but serve refuses an absent embedded UI unless `--dev` is explicitly supplied. Development can run Vite separately. Release scripts build CGO-disabled Linux/macOS/Windows amd64/arm64 binaries with trimmed paths and a fixed version, then create archives and SHA-256 manifests. Build with the same toolchain/dependency lock files for reproducible binaries. Archive metadata is not claimed to be byte-for-byte reproducible.
 
 The tag release workflow tests Go, builds frontend and release artifacts, then publishes archives/checksums. A release job succeeding is separate from deployment validation.
+
+## Optional Google sign-in
+
+An installation administrator can configure a Google web OAuth client in **조직 설정 → Google 로그인**. It is off by default. Use the exact callback URI shown in settings and precreate active accounts; there is no Google-based open signup or automatic administrator promotion. [Google sign-in setup](docs/GOOGLE_LOGIN.md) explains client creation, Gmail/Workspace eligibility, domain restrictions and recovery administration. Keep a working password administrator while configuring and testing Google.

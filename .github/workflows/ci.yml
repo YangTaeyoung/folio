@@ -28,6 +28,7 @@ jobs:
       - run: python scripts/test_install.py --binary ./dist/folio
       - run: python scripts/smoke_cli.py --binary ./dist/folio
       - run: python web/tests/e2e.py --binary ./dist/folio --screenshots .work/e2e
+      - run: python web/tests/google_auth.py --binary ./dist/folio --screenshots .work/google-e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

@@ -54,6 +54,15 @@ func (s *Server) revoke(userID string) {
 func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) error {
 	path := r.URL.Path
 	switch {
+	case path == "/api/auth/providers" && r.Method == "GET":
+		writeJSON(w, 200, map[string]any{"google": map[string]any{"enabled": s.st.GoogleAuth.Enabled, "startUrl": "/api/auth/google/start"}})
+		return nil
+	case path == "/api/auth/google/start" && r.Method == "GET":
+		return s.googleStart(w, r)
+	case path == "/api/auth/google/callback" && r.Method == "GET":
+		return s.googleCallback(w, r)
+	case path == "/api/admin/auth/google":
+		return s.googleSettings(w, r, p)
 	case path == "/api/bootstrap" && r.Method == "GET":
 		writeJSON(w, 200, map[string]any{"needsSetup": len(s.st.Users) == 0, "version": s.cfg.Version})
 		return nil
@@ -125,7 +134,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 		}
 		s.loginAttempts[key] = a
 		for _, u := range s.st.Users {
-			if u.Email == strings.ToLower(strings.TrimSpace(in.Email)) && !u.Disabled && bcrypt.CompareHashAndPassword([]byte(u.Hash), []byte(in.Password)) == nil {
+			if u.Email == strings.ToLower(strings.TrimSpace(in.Email)) && !u.Disabled && u.LoginMethod != "google" && bcrypt.CompareHashAndPassword([]byte(u.Hash), []byte(in.Password)) == nil {
 				delete(s.loginAttempts, key)
 				s.audit(principal{user: &u.User}, "login", u.ID, "")
 				out, e := s.startSession(w, u.User)
@@ -169,6 +178,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 			return e
 		}
 		u := s.st.Users[p.user.ID]
+		if u.LoginMethod == "google" {
+			return fail(409, "google_only_account", "This account uses Google sign-in")
+		}
 		if bcrypt.CompareHashAndPassword([]byte(u.Hash), []byte(in.CurrentPassword)) != nil {
 			return fail(403, "invalid_password", "Current password is incorrect")
 		}
@@ -269,7 +281,7 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 		id = parts[1]
 	}
 	if id == "" && r.Method == "POST" {
-		var in struct{ Name, Email, Role, Password string }
+		var in struct{ Name, Email, Role, Password, LoginMethod string }
 		if e := decode(r, &in); e != nil {
 			return e
 		}
@@ -291,16 +303,29 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 		if in.Role != "admin" && in.Role != "member" {
 			return fail(400, "invalid_role", "Invalid role")
 		}
+		if in.LoginMethod != "" && in.LoginMethod != "password" && in.LoginMethod != "google" {
+			return fail(400, "invalid_login_method", "Unknown login method")
+		}
+		googleOnly := in.LoginMethod == "google"
+		if googleOnly && (!s.st.GoogleAuth.Enabled || in.Password != "") {
+			return fail(400, "google_account_unavailable", "Enable Google sign-in and omit the password")
+		}
 		temp := ""
-		if in.Password == "" {
+		if !googleOnly && in.Password == "" {
 			temp = random()[:24]
 			in.Password = temp
 		}
-		hash, e := passwordHash(in.Password)
-		if e != nil {
-			return e
+		hash := ""
+		if !googleOnly {
+			hash, e = passwordHash(in.Password)
+			if e != nil {
+				return e
+			}
 		}
-		u := User{ID: random(), Name: in.Name, Email: email, Role: in.Role, MustChangePassword: true, CreatedAt: now()}
+		u := User{ID: random(), Name: in.Name, Email: email, Role: in.Role, MustChangePassword: !googleOnly, CreatedAt: now()}
+		if googleOnly {
+			u.LoginMethod = "google"
+		}
 		if e = s.mutate(func() error {
 			s.st.Users[u.ID] = userRecord{u, hash}
 			s.audit(p, "member.created", u.ID, "")
@@ -320,6 +345,9 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 		return fail(404, "not_found", "Member not found")
 	}
 	if len(parts) == 3 && parts[2] == "reset-password" && r.Method == "POST" {
+		if u.LoginMethod == "google" {
+			return fail(409, "google_only_account", "This account uses Google sign-in")
+		}
 		if id == p.user.ID {
 			return fail(400, "use_password_change", "Use the account password-change form to change your own password")
 		}
@@ -367,7 +395,7 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 		}
 		admins := 0
 		for uid, v := range s.st.Users {
-			if uid != id && v.Role == "admin" && !v.Disabled {
+			if uid != id && v.Role == "admin" && !v.Disabled && (v.LoginMethod != "google" || s.googleAccountEligible(v.User, s.st.GoogleAuth)) {
 				admins++
 			}
 		}

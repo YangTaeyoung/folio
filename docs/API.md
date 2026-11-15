@@ -3,7 +3,7 @@
 JSON camelCase. Error responses `{error:{code,message}}`, appropriate 400/401/403/404/409/413/429/5xx. No secrets in returned config/list/detail objects. Unauthorized artifact identifiers return 404. IDs opaque strings. Dates RFC3339 UTC. Metadata operations are JSON; uploads multipart.
 
 ## JSON models
-User: `{id,email,name,role:"admin"|"member",disabled,mustChangePassword,createdAt}`.
+User: `{id,email,name,role:"admin"|"member",disabled,mustChangePassword,createdAt,loginMethod?:"google",googleLinked?:boolean}`. Omitted `loginMethod` means password account (including password accounts linked to Google); `google` means Google-only, with no local password.
 Organization: `{id,name}` (one per installation).
 Artifact: `{id,slug,title,description,ownerId,ownerName,visibility:"private"|"organization"|"selected"|"public",memberIds:[],archived,expiresAt:null|string,createdAt,updatedAt,sizeBytes,currentVersionId,shareUrl,kind}`.
 Version: `{id,artifactId,number,createdAt,sizeBytes,backendId,files:[{path,mimeType,size}],message}`.
@@ -15,6 +15,11 @@ Domain: `{id,hostname,artifactId,provider:"manual"|"cloudflare"|"domainconnect",
 - GET /api/bootstrap -> `{needsSetup,version}`
 - POST /api/setup `{token,organizationName,name,email,password}` -> `{user,csrfToken,organization}` + session cookie. Token from config/file, one-time bootstrap.
 - POST /api/auth/login `{email,password}` -> `{user,csrfToken,organization}` + session cookie
+- GET /api/auth/providers -> `{google:{enabled:boolean,startUrl:"/api/auth/google/start"}}` (public; no provider network request).
+- GET /api/auth/google/start -> Google authorization-code redirect with browser-bound, five-minute single-use state, nonce, and S256 PKCE; scopes `openid email`. Retry friction is per opaque browser cookie: 10 starts per 15 minutes, reset on successful login; no shared peer-IP quota or trusted forwarded headers. Hard bounds: 1,000 live pending states and 16 concurrent token/JWKS exchanges. An over-cap callback consumes its state and redirects `google_rate_limited`; start again to retry.
+- GET /api/auth/google/callback -> existing session cookie and `/#library`; errors redirect to `/?auth_error=SAFE_CODE` without provider details. Codes: `google_disabled`, `google_rate_limited`, `google_state_invalid`, `google_denied`, `google_failed`, `google_account_denied`. No signup: only existing active members with verified authoritative Gmail/Workspace emails; persistent issuer/subject binding rejects reassignment.
+- GET /api/admin/auth/google -> `{enabled,clientId,clientSecretConfigured,allowedDomains:[],redirectURI}`; admin session required.
+- PATCH /api/admin/auth/google `{enabled,clientId,clientSecret?:string,allowedDomains:[]}` -> same; admin session + CSRF. Omitted/blank secret retains encrypted stored secret. Nonempty hosted-domain restriction uses signed `hd`, never email suffix. Disabling/changing settings preserves at least one active admin with an available sign-in method; pending logins are invalidated.
 - GET /api/me -> `{user,csrfToken,organization}`; 401 otherwise
 - POST /api/auth/logout -> 204
 - POST /api/auth/password `{currentPassword,newPassword}` -> `{user,csrfToken}` (session rotated)
@@ -34,9 +39,9 @@ Domain: `{id,hostname,artifactId,provider:"manual"|"cloudflare"|"domainconnect",
 - GET /s/{slug} -> trusted frontend viewer route (normal app shell assets); fetched metadata checks access.
 - Content listener /grant/{nonce} -> exchange once on nonce's exact hostname, artifact-scoped host-only viewer cookie, redirect /render/{artifactId}/{versionId}/index.html. EVERY file checks original session/token remains active, scope and incoming host matches this artifact. Each canonical hostname resolves exactly one artifact from ContentURL template `{artifact}`. Host-mapped verified custom domain `/...` resolves that artifact root under same checks; private unauthenticated root redirects to AppURL/s/{slug}?domain=hostname for trusted login/grant exchange.
 - GET /api/members -> `{members}` active member directory for sharing (admin gets disabled too)
-- POST /api/admin/members `{name,email,role,password?}` -> `{user,temporaryPassword?}` displayed once
+- POST /api/admin/members `{name,email,role,password?,loginMethod?:"password"|"google"}` -> `{user,temporaryPassword?}` displayed once. Google-only requires enabled Google provider and an email; password must be omitted, no temporary password or password-change gate. Existing users keep password behavior.
 - PATCH /api/admin/members/{id} `{role?,disabled?,name?}` -> `{user}`
-- POST /api/admin/members/{id}/reset-password -> `{temporaryPassword}` displayed once; revoke sessions/tokens
+- POST /api/admin/members/{id}/reset-password -> `{temporaryPassword}` displayed once; revoke sessions/tokens. Google-only returns 409 `google_only_account`; Google-only also cannot use password login/change.
 - GET /api/admin/settings -> `{organization,policy,appUrl,contentUrl}`
 - PATCH /api/admin/settings `{organizationName?,policy?}` -> same
 - POST /api/admin/cleanup `{dryRun:true|false}` -> `{candidates:[{id,title,reason,sizeBytes}],freedBytes}`

@@ -6,6 +6,8 @@ export interface User {
   role: "admin" | "member";
   disabled: boolean;
   mustChangePassword: boolean;
+  loginMethod?: "password" | "google";
+  googleLinked?: boolean;
   createdAt: string;
 }
 export interface Organization {

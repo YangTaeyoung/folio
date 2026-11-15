@@ -333,7 +333,7 @@
       {
         "name": "auth-panel",
         "value": "0 8px 30px #18233506",
-        "purpose": "Subtle depth under the centered authentication form."
+        "purpose": "Subtle depth under the first-run setup form."
       },
       {
         "name": "toast",

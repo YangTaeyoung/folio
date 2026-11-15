@@ -1,0 +1,52 @@
+.google-auth-settings > .subtle {
+  margin: -6px 0 24px;
+}
+.google-auth-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.google-auth-enable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 550;
+  margin-bottom: 24px;
+}
+.google-auth-actions,
+.google-auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.google-auth-guide {
+  margin: 26px 0 20px;
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+}
+.google-auth-guide h3 {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+.google-auth-guide ol {
+  padding-left: 22px;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.google-auth-guide li + li {
+  margin-top: 6px;
+}
+.google-auth-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.google-auth-settings > .notice {
+  margin-bottom: 0;
+}

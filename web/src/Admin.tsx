@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { api, bytes, date, json, setCSRF } from "./api";
+import { GoogleAuthSettings } from "./GoogleAuthSettings";
 import type {
   Artifact,
   Audit,
@@ -88,9 +89,18 @@ export function PageHeading({
 
 export function MembersPage({ self }: { self: User }) {
   const r = useResource<{ members: User[] }>("/api/members");
+  const providers = useResource<{ google: { enabled: boolean } }>(
+    "/api/auth/providers",
+  );
   const [show, setShow] = useState(false);
   const [temporary, setTemporary] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", role: "member" });
+  const [created, setCreated] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    role: "member",
+    loginMethod: "password",
+  });
   const [confirm, setConfirm] = useState<User | null>(null);
   const a = useAction();
   const members = r.data?.members || [];
@@ -107,6 +117,7 @@ export function MembersPage({ self }: { self: User }) {
         }
       />
       <ErrorBox error={r.error || a.error} />
+      {created && <Notice>{created}</Notice>}
       {temporary && (
         <div className="secret-box">
           <KeyRound size={21} />
@@ -202,19 +213,28 @@ export function MembersPage({ self }: { self: User }) {
                     <td className="subtle">{date(u.createdAt)}</td>
                     <td>
                       <div className="button-row">
-                        <button
-                          className="button secondary compact"
-                          disabled={a.busy || u.id === self.id}
-                          title={
-                            u.id === self.id
-                              ? "내 계정에서 비밀번호를 변경하세요"
-                              : undefined
-                          }
-                          onClick={() => setConfirm(u)}
-                        >
-                          <KeyRound size={14} />
-                          초기화
-                        </button>
+                        {u.loginMethod === "google" ? (
+                          <span
+                            className="subtle"
+                            title="Google에서 비밀번호를 관리하는 계정입니다."
+                          >
+                            Google 로그인
+                          </span>
+                        ) : (
+                          <button
+                            className="button secondary compact"
+                            disabled={a.busy || u.id === self.id}
+                            title={
+                              u.id === self.id
+                                ? "내 계정에서 비밀번호를 변경하세요"
+                                : undefined
+                            }
+                            onClick={() => setConfirm(u)}
+                          >
+                            <KeyRound size={14} />
+                            초기화
+                          </button>
+                        )}
                         {u.id !== self.id && (
                           <button
                             className="button secondary compact"
@@ -252,8 +272,18 @@ export function MembersPage({ self }: { self: User }) {
                   json("POST", form),
                 );
                 setTemporary(result.temporaryPassword || "");
+                setCreated(
+                  form.loginMethod === "google"
+                    ? `${form.name}님의 Google 로그인 계정을 만들었습니다. 등록한 이메일의 Google 계정으로 로그인할 수 있습니다.`
+                    : "",
+                );
                 setShow(false);
-                setForm({ name: "", email: "", role: "member" });
+                setForm({
+                  name: "",
+                  email: "",
+                  role: "member",
+                  loginMethod: "password",
+                });
                 r.reload();
               });
             }}
@@ -283,10 +313,35 @@ export function MembersPage({ self }: { self: User }) {
                   <option value="admin">관리자</option>
                 </select>
               </Field>
+              {providers.data?.google.enabled && (
+                <Field label="로그인 방법">
+                  <select
+                    value={form.loginMethod}
+                    onChange={(e) =>
+                      setForm({ ...form, loginMethod: e.target.value })
+                    }
+                  >
+                    <option value="password">이메일과 비밀번호</option>
+                    <option value="google">Google 계정</option>
+                  </select>
+                </Field>
+              )}
               <Notice>
-                임시 비밀번호를 생성합니다. 계정 생성 후 안전한 방법으로 전달해
-                주세요.
+                {form.loginMethod === "google"
+                  ? "등록한 이메일과 일치하는 Google 계정으로만 로그인합니다. 임시 비밀번호는 생성하지 않습니다. 허용 도메인을 설정했다면 해당 Google Workspace 계정이어야 합니다."
+                  : "임시 비밀번호를 생성합니다. 계정 생성 후 안전한 방법으로 전달해 주세요."}
               </Notice>
+              {providers.loading && (
+                <p className="subtle">
+                  Google 로그인 사용 여부를 확인하고 있습니다.
+                </p>
+              )}
+              {!!providers.error && (
+                <p className="subtle">
+                  Google 로그인 설정을 불러오지 못했습니다. 비밀번호 계정을 만들
+                  수 있습니다.
+                </p>
+              )}
               <ErrorBox error={a.error} />
             </div>
             <footer className="dialog-footer">
@@ -1734,6 +1789,7 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
           서버 설정에서 적용해 주세요.
         </Notice>
       </section>
+      <GoogleAuthSettings />
     </>
   );
 }
@@ -1801,7 +1857,11 @@ export function AccountPage({
     <>
       <PageHeading
         title="내 계정"
-        description="계정 정보를 확인하고 비밀번호를 변경합니다."
+        description={
+          session.user.loginMethod === "google"
+            ? "계정 정보와 로그인 방법을 확인합니다."
+            : "계정 정보를 확인하고 비밀번호를 변경합니다."
+        }
       />
       <section className="panel">
         <h2>계정 정보</h2>
@@ -1820,76 +1880,94 @@ export function AccountPage({
           </div>
         </dl>
       </section>
-      <section className="panel">
-        <h2>비밀번호 변경</h2>
-        <p className="subtle">
-          변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.
-        </p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void a.run(async () => {
-              if (next !== confirm)
-                throw new Error("새 비밀번호가 일치하지 않습니다.");
-              const s = await api<Session>(
-                "/api/auth/password",
-                json("POST", { currentPassword: current, newPassword: next }),
-              );
-              setCSRF(s.csrfToken);
-              onSession(s);
-              setCurrent("");
-              setNext("");
-              setConfirm("");
-              setSaved(true);
-            });
-          }}
-        >
-          <div className="form-grid">
-            <Field label="현재 비밀번호">
-              <input
-                required
-                type="password"
-                autoComplete="current-password"
-                value={current}
-                onChange={(e) => setCurrent(e.target.value)}
-              />
-            </Field>
-            <div />
-          </div>
-          <div className="form-grid">
-            <Field label="새 비밀번호">
-              <input
-                required
-                type="password"
-                minLength={12}
-                autoComplete="new-password"
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-              />
-            </Field>
-            <Field label="새 비밀번호 확인">
-              <input
-                required
-                type="password"
-                minLength={12}
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-              />
-            </Field>
-          </div>
-          <ErrorBox error={a.error} />
-          <button className="button primary" disabled={a.busy}>
-            {a.busy ? <Spinner /> : "비밀번호 변경"}
-          </button>
-          {saved && (
-            <span className="saved-inline">
-              <CheckCircle2 size={15} />
-              비밀번호를 변경했습니다.
-            </span>
-          )}
-        </form>
-      </section>
+      {session.user.loginMethod === "google" ? (
+        <section className="panel">
+          <h2>Google 로그인</h2>
+          <p className="subtle">
+            Google 계정으로 로그인하는 계정입니다. 비밀번호는 Google 계정에서
+            관리하며 Folio 비밀번호는 사용하지 않습니다.
+          </p>
+          <a
+            className="button secondary"
+            href="https://myaccount.google.com/security"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Google 계정 보안 설정 <ExternalLink size={15} />
+          </a>
+        </section>
+      ) : (
+        <section className="panel">
+          <h2>비밀번호 변경</h2>
+          <p className="subtle">
+            변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void a.run(async () => {
+                if (next !== confirm)
+                  throw new Error("새 비밀번호가 일치하지 않습니다.");
+                const s = await api<Session>(
+                  "/api/auth/password",
+                  json("POST", { currentPassword: current, newPassword: next }),
+                );
+                setCSRF(s.csrfToken);
+                onSession(s);
+                setCurrent("");
+                setNext("");
+                setConfirm("");
+                setSaved(true);
+              });
+            }}
+          >
+            <div className="form-grid">
+              <Field label="현재 비밀번호">
+                <input
+                  required
+                  type="password"
+                  autoComplete="current-password"
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value)}
+                />
+              </Field>
+              <div />
+            </div>
+            <div className="form-grid">
+              <Field label="새 비밀번호">
+                <input
+                  required
+                  type="password"
+                  minLength={12}
+                  autoComplete="new-password"
+                  value={next}
+                  onChange={(e) => setNext(e.target.value)}
+                />
+              </Field>
+              <Field label="새 비밀번호 확인">
+                <input
+                  required
+                  type="password"
+                  minLength={12}
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                />
+              </Field>
+            </div>
+            <ErrorBox error={a.error} />
+            <button className="button primary" disabled={a.busy}>
+              {a.busy ? <Spinner /> : "비밀번호 변경"}
+            </button>
+            {saved && (
+              <span className="saved-inline">
+                <CheckCircle2 size={15} />
+                비밀번호를 변경했습니다.
+              </span>
+            )}
+          </form>
+        </section>
+      )}
     </>
   );
 }

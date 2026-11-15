@@ -37,6 +37,8 @@ type Config struct {
 	DomainConnect                                        *dns.DomainConnect
 	CloudflareAPIBase                                    string
 	HTTPClient                                           *http.Client
+	// GoogleHTTPClient optionally injects a transport for tests; endpoints remain fixed.
+	GoogleHTTPClient *http.Client
 }
 type User struct {
 	ID                 string    `json:"id"`
@@ -47,6 +49,8 @@ type User struct {
 	MustChangePassword bool      `json:"mustChangePassword"`
 	CreatedAt          time.Time `json:"createdAt"`
 	PasswordHash       string    `json:"-"`
+	LoginMethod        string    `json:"loginMethod,omitempty"`
+	GoogleLinked       bool      `json:"googleLinked,omitempty"`
 }
 type userRecord struct {
 	User
@@ -153,20 +157,23 @@ type Garbage struct {
 	Error          string
 }
 type state struct {
-	Organization Organization
-	Policy       Policy
-	Users        map[string]userRecord
-	Sessions     map[string]Session
-	Tokens       map[string]tokenRecord
-	Artifacts    map[string]Artifact
-	Versions     map[string][]Version
-	Backends     map[string]backendRecord
-	Grants       map[string]Viewer
-	Viewers      map[string]Viewer
-	Garbage      []Garbage
-	Audit        []Audit
-	Domains      map[string]domainRecord
-	DNSSecret    string
+	Organization        Organization
+	Policy              Policy
+	Users               map[string]userRecord
+	Sessions            map[string]Session
+	Tokens              map[string]tokenRecord
+	Artifacts           map[string]Artifact
+	Versions            map[string][]Version
+	Backends            map[string]backendRecord
+	Grants              map[string]Viewer
+	Viewers             map[string]Viewer
+	Garbage             []Garbage
+	Audit               []Audit
+	Domains             map[string]domainRecord
+	DNSSecret           string
+	GoogleAuth          googleAuthConfig
+	GoogleSubjects      map[string]string
+	GoogleHostedDomains map[string]string
 }
 type Server struct {
 	mu              sync.Mutex
@@ -186,6 +193,10 @@ type Server struct {
 	pendingBackends map[string]int
 	pendingUploads  map[string]bool
 	closed          bool
+	googlePending   map[string]googleLoginAttempt
+	googleBrowsers  map[string]attempt
+	googleExchanges int
+	googleVerifier  googleTokenVerifier
 }
 type attempt struct {
 	Count int

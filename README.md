@@ -46,6 +46,7 @@ The first-run URL appears in the terminal. Open it and create your organization 
 - **Retention you control:** quota, upload limit and retention period; reject uploads or explicitly opt into deleting the oldest eligible content. Archive protects artifacts from automatic deletion and still counts toward quota.
 - **Domains:** manual DNS records for any provider, Cloudflare token provisioning and official browser login via optional `cloudflared`. A dedicated Cloudflare Tunnel can provide public ingress. Domain Connect is available only for configured, provider-approved templates. See [DNS](docs/dns.md).
 - **Backoffice:** admin-created accounts, roles, temporary password reset, suspension, organization settings and audit history.
+- **Optional Google sign-in:** installation-owned OAuth client, Google-only invited accounts and Workspace domain restrictions. Password login and the offline core stay available without Google. See [setup](docs/GOOGLE_LOGIN.md).
 - **Agent tools included:** CLI, official Go SDK MCP stdio server and a portable skill; use your preferred model and gateway.
 
 On-prem **public** means anyone who can reach your Folio server. Internet sharing requires deliberate ingress configuration. Administrators can manage all artifacts in the installation.
