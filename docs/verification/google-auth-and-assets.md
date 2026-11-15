@@ -9,4 +9,14 @@ Validated 2026-11-16 on the change based on `ce769a0`.
 - Installer checksum/idempotency/preservation/upgrade and CLI/MCP-skill smoke checks passed.
 - New generated illustration and local fonts/assets were inspected at desktop/mobile widths; horizontal overflow and JavaScript errors were absent. Impeccable detector reported no findings on changed authentication surfaces.
 
-Actual Google client issuance, live account login and Mac Studio runtime checks are deployment gates and must be reported separately. See [Google setup](../GOOGLE_LOGIN.md) and [asset generation record](../design/brand-assets.md).
+## Deployment verification
+
+Source `3dfab2f` was released as `v0.3.0`. Source CI `43732757200` and release `43732760644` succeeded. All six public archive checksums and both bundled font licenses were verified. The public one-command installer was exercised on the development Mac and Mac Studio; their installed binary SHA-256 matched. The published binary passed both the 20-flow regression and nine-flow Google settings suites.
+
+The existing installation was stopped cleanly before its database, encryption key and content were copied. SQLite integrity and all 18 copied file hashes passed. All three existing users, two artifacts and five retained versions survived the migration. A dedicated native user LaunchAgent runs the verified public binary on Mac Studio; it starts at user login and restarts the application. Host reboot before user login was not tested. Only the four existing Folio DNS records were migrated; unrelated tunnel ingress rules were preserved.
+
+Actual HTTPS checks on `folio.melona.cloud` passed for password administration, both canonical artifact hosts, anonymous private-content denial, public demo, private viewer revocation after logout, generated assets and mobile form order.
+
+A separate Google Cloud project and web OAuth client were created by the operator. The operator's precreated Google-only administrator completed real Google account selection and consent, returned to Folio, and showed administrator status and Google account management on the Account page. The server persisted the subject binding and matching `login.google` audit event. Configuration and audit responses did not expose the client secret. Private identity, credential and account captures remain outside the repository. The Google app is currently in Testing mode with the operator registered as a test user; expanding Google-side access requires its audience configuration in Google Cloud.
+
+See [Google setup](../GOOGLE_LOGIN.md) and [asset generation record](../design/brand-assets.md).
