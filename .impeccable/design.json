@@ -331,9 +331,9 @@
         "purpose": "Blocking modal and drawer elevation."
       },
       {
-        "name": "auth-illustration",
-        "value": "0 8px 24px #303d5810",
-        "purpose": "Illustrative authentication cards only."
+        "name": "auth-panel",
+        "value": "0 8px 30px #18233506",
+        "purpose": "Subtle depth under the centered authentication form."
       },
       {
         "name": "toast",

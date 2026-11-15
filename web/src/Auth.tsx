@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowRight,
-  FileCode,
-  KeyRound,
-  ShieldCheck,
-  Layers,
-  Share2,
-} from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { api, json, setCSRF } from "./api";
 import type { Session } from "./types";
 import { ErrorBox, Field, Spinner, useAction } from "./ui";
@@ -27,6 +20,7 @@ export default function Auth({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [org, setOrg] = useState("");
   const [token, setToken] = useState(
@@ -34,48 +28,10 @@ export default function Auth({
   );
   const action = useAction();
   return (
-    <main className="auth-page">
-      <section className="auth-story">
+    <main className={`auth-page ${setup ? "auth-setup" : ""}`}>
+      <header className="auth-header">
         <Brand />
-        <div>
-          <h1>
-            만든 결과물을,
-            <br />
-            하나의 작업 공간에.
-          </h1>
-          <p>
-            문서와 작은 웹앱부터 팀의 프로토타입까지.
-            <br />내 서버에 게시하고, 필요한 사람에게 공유하세요.
-          </p>
-          <div className="auth-artifact-stack" aria-hidden="true">
-            <div className="auth-artifact">
-              <FileCode size={24} />
-              <span>Product prototype</span>
-              <div className="auth-preview">
-                <i />
-                <i />
-                <i />
-              </div>
-              <small>HTML · Interactive</small>
-            </div>
-            <div className="auth-artifact">
-              <Layers size={24} />
-              <span>Project brief</span>
-              <div className="auth-document-lines">
-                <i />
-                <i />
-                <i />
-              </div>
-              <small>Folio workspace</small>
-              <Share2 size={17} />
-            </div>
-          </div>
-        </div>
-        <footer>
-          <ShieldCheck size={16} />
-          우리 서버에 보관하는 팀의 작업 공간
-        </footer>
-      </section>
+      </header>
       <section className="auth-form-wrap">
         <form
           onSubmit={(e) => {
@@ -96,12 +52,12 @@ export default function Auth({
             });
           }}
         >
-          <Brand />
+          <img className="auth-mark" src="/favicon.svg" alt="" />
           <h2>{setup ? "작업 공간 만들기" : "작업 공간에 로그인"}</h2>
           <p className="subtle">
             {setup
-              ? "첫 관리자 계정을 만들고 아티팩트를 모아보세요."
-              : "관리자가 생성한 계정으로 로그인해 주세요."}
+              ? "조직과 첫 관리자 계정을 설정하세요."
+              : "이메일과 비밀번호로 작업 공간에 접속하세요."}
           </p>
           {setup && (
             <>
@@ -145,25 +101,56 @@ export default function Auth({
               placeholder="you@company.com"
             />
           </Field>
-          <Field
-            label="비밀번호"
-            hint={setup ? "12자 이상으로 설정해 주세요." : undefined}
-          >
-            <input
-              required
-              type="password"
-              minLength={setup ? 12 : undefined}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={setup ? "new-password" : "current-password"}
-            />
-          </Field>
+          <div className="field auth-password-field">
+            <label htmlFor="auth-password">비밀번호</label>
+            <div className="auth-password-input">
+              <input
+                id="auth-password"
+                required
+                type={showPassword ? "text" : "password"}
+                minLength={setup ? 12 : undefined}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={setup ? "new-password" : "current-password"}
+                aria-describedby={setup ? "auth-password-hint" : undefined}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((value) => !value)}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+            {setup && (
+              <small id="auth-password-hint">
+                12자 이상으로 설정해 주세요.
+              </small>
+            )}
+          </div>
           <ErrorBox error={action.error} />
           <button className="button primary auth-submit" disabled={action.busy}>
             {action.busy ? <Spinner /> : setup ? "작업 공간 만들기" : "로그인"}
-            <ArrowRight size={18} />
           </button>
-          <p className="auth-foot">Folio · MIT 오픈소스 · 내 서버, 내 데이터</p>
+          {!setup && (
+            <div className="auth-account-help">
+              <p>
+                처음 이용하시나요?
+                <br />
+                조직 관리자가 생성한 계정으로 로그인할 수 있습니다.
+              </p>
+              <details>
+                <summary>계정 도움말</summary>
+                <p>
+                  계정이 없거나 비밀번호를 잊으셨다면 조직 관리자에게
+                  문의하세요. 관리자가 계정을 생성하거나 비밀번호를 초기화할 수
+                  있습니다.
+                </p>
+              </details>
+            </div>
+          )}
         </form>
       </section>
     </main>

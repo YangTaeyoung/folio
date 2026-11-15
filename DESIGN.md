@@ -182,7 +182,7 @@ Destructive actions use the dedicated red `danger`, while errors and warnings ha
 
 - **Headline:** Page heading; desktop role is defined in frontmatter. At widths up to (900px), headings become (30px); up to (600px), use `headline-mobile` (`web/src/style.css:76`, `:2120`, `:2198`).
 - **Card title:** Grid artifact titles use `card-title`, then `card-title-mobile` on small screens; retain their prominent scale. Long titles truncate with an ellipsis. List titles intentionally use (15px) desktop and (14px) mobile (`web/src/style.css:687`, `:820`, `:2254`).
-- **Section title:** Default secondary heading uses `section-title`; specific panel titles can be (16px). Authentication form headings use (26px), reduced to (25px) on mobile.
+- **Section title:** Default secondary heading uses `section-title`; specific panel titles can be (16px). Authentication form headings use (24px), increasing to (25px) on mobile.
 - **Body:** Base body role is defined in frontmatter. Paragraphs use a looser line height (1.65); page descriptions have a maximum line length (72ch). Supporting descriptions commonly use (13px).
 - **Metadata:** Audience, owner, timestamps and hints use `metadata`; small type supports primary labels rather than replacing them.
 - **Buttons:** Medium-weight labels remain on one line; list actions must not break into individual Korean characters (`web/src/style.css:759`, `:836`).
@@ -203,13 +203,13 @@ The responsive implementation changes structure rather than merely shrinking eve
 
 Sharing uses a right drawer (440px); detail uses a wide drawer (670px). Both fill the viewport height, with separately scrolling bodies and visible footers. Mobile drawers occupy the full viewport width. Standard dialogs are (470px), wide dialogs (680px), and mobile dialogs have (12px) outer gutters (`web/src/style.css:1018`, `:1076`, `:2307`).
 
-Authentication has a gray story pane and white form pane, with a form width (350px). Up to (600px), the story pane is removed, the brand appears above the form, and the form uses the available width (`web/src/style.css:1815`, `:1931`, `:2458`).
+Authentication uses a single centered white form (420px including 36px padding), a cool near-white canvas, and a compact top-left wordmark. The form heading is (24px); inputs and the primary button are (44px) high. Account guidance and an expandable help section sit below a divider. There is no marketing story pane or illustrative artifact stack. Up to (600px), the panel border/shadow are removed and the form uses the available width with (24px) page gutters and a (25px) heading. First-run setup reuses the same system at (460px) desktop width (`web/src/Auth.tsx`, `web/src/style.css`).
 
 The [interactive showcase](examples/folio-showcase/index.html) is a separate product-tour artifact. It shares the cool neutral material, black actions, blue state and local Pretendard, but has its own type scale and responsive navigation. Its illustrative cards and explicitly labeled local access simulation are tour content, not a substitute for actual library data.
 
 ## Elevation & Depth
 
-Borders and tonal separation establish the resting hierarchy. The sidebar is a tonal layer; white cards are lightly outlined. Keep depth restrained: primary buttons have a tiny shadow, artifact cards acquire a blue border/ring on hover or focus within, and blocking dialogs receive the strongest shadow. Authentication's illustrative cards have a softer, small shadow. Exact shadow values are carried in `.impeccable/design.json` (`web/src/style.css:197`, `:205`, `:624`, `:1031`, `:1874`).
+Borders and tonal separation establish the resting hierarchy. The sidebar is a tonal layer; white cards are lightly outlined. Keep depth restrained: primary buttons have a tiny shadow, artifact cards acquire a blue border/ring on hover or focus within, and blocking dialogs receive the strongest shadow. Authentication's centered form has a subtle downward shadow. Exact shadow values are carried in `.impeccable/design.json` (`web/src/style.css:197`, `:205`, `:624`, `:1031`, `:1874`).
 
 **The Quiet Depth Rule.** Use borders and tone for ordinary organization; reserve stronger elevation for blocking overlays and transient feedback.
 
