@@ -557,70 +557,79 @@ function Workspace({
           <ErrorBox error={error} />
           {library ? (
             <>
-              <header className="library-header">
-                <div>
-                  <h1>{title}</h1>
-                  <p>
-                    {view === "archive"
-                      ? "보관한 아티팩트는 자동 정리에서 제외합니다."
-                      : view === "mine"
-                        ? "보고서부터 작은 웹앱까지, 내가 만든 아티팩트를 모아보세요."
-                        : view === "shared"
-                          ? "조직 전체 또는 나에게 공유된 아티팩트를 볼 수 있습니다."
-                          : "문서, 웹앱, 프로토타입. 팀과 에이전트가 만든 결과물을 관리하세요."}
-                  </p>
-                </div>
-                <button
-                  className="button primary"
-                  onClick={() => setUpload(true)}
-                >
-                  <Plus size={17} />새 아티팩트
-                </button>
-              </header>
-              <div className="library-toolbar">
-                <span className="result-count">
-                  {r.loading
-                    ? "불러오는 중…"
-                    : `${artifacts.length}개 아티팩트`}
-                </span>
-                <div className="toolbar-controls">
-                  <div className="input-icon search-field">
-                    <Search size={16} />
-                    <input
-                      ref={searchRef}
-                      aria-label="아티팩트 검색"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="아티팩트 검색…"
-                    />
-                    <kbd>⌘K</kbd>
+              <div className="library-overview">
+                <header className="library-header">
+                  <div>
+                    <div className="library-title-line">
+                      <h1>{title}</h1>
+                      <span
+                        className="library-total"
+                        aria-label={
+                          r.loading
+                            ? "불러오는 중"
+                            : `${artifacts.length}개 아티팩트`
+                        }
+                      >
+                        {r.loading ? "…" : artifacts.length}
+                      </span>
+                    </div>
+                    <p>
+                      {view === "archive"
+                        ? "보관한 아티팩트는 자동 정리에서 제외합니다."
+                        : view === "mine"
+                          ? "보고서부터 작은 웹앱까지, 내가 만든 아티팩트를 모아보세요."
+                          : view === "shared"
+                            ? "조직 전체 또는 나에게 공유된 아티팩트를 볼 수 있습니다."
+                            : "문서, 웹앱, 프로토타입. 팀과 에이전트가 만든 결과물을 관리하세요."}
+                    </p>
                   </div>
-                  <select
-                    className="sort-select"
-                    aria-label="정렬"
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value)}
+                  <button
+                    className="button primary"
+                    onClick={() => setUpload(true)}
                   >
-                    <option value="updated">최근 수정순</option>
-                    <option value="title">제목순</option>
-                  </select>
-                  <div className="view-toggle" aria-label="보기 방식">
-                    <button
-                      className={layout === "grid" ? "active" : ""}
-                      aria-label="그리드 보기"
-                      aria-pressed={layout === "grid"}
-                      onClick={() => setLayout("grid")}
+                    <Plus size={17} />새 아티팩트
+                  </button>
+                </header>
+                <div className="library-toolbar">
+                  <div className="toolbar-controls">
+                    <div className="input-icon search-field">
+                      <Search size={16} />
+                      <input
+                        ref={searchRef}
+                        aria-label="아티팩트 검색"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="아티팩트 검색…"
+                      />
+                      <kbd>⌘K</kbd>
+                    </div>
+                    <select
+                      className="sort-select"
+                      aria-label="정렬"
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value)}
                     >
-                      <Grid2X2 size={16} />
-                    </button>
-                    <button
-                      className={layout === "list" ? "active" : ""}
-                      aria-label="목록 보기"
-                      aria-pressed={layout === "list"}
-                      onClick={() => setLayout("list")}
-                    >
-                      <List size={16} />
-                    </button>
+                      <option value="updated">최근 수정순</option>
+                      <option value="title">제목순</option>
+                    </select>
+                    <div className="view-toggle" aria-label="보기 방식">
+                      <button
+                        className={layout === "grid" ? "active" : ""}
+                        aria-label="그리드 보기"
+                        aria-pressed={layout === "grid"}
+                        onClick={() => setLayout("grid")}
+                      >
+                        <Grid2X2 size={16} />
+                      </button>
+                      <button
+                        className={layout === "list" ? "active" : ""}
+                        aria-label="목록 보기"
+                        aria-pressed={layout === "list"}
+                        onClick={() => setLayout("list")}
+                      >
+                        <List size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

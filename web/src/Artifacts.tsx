@@ -59,6 +59,18 @@ export function ArtifactPreview({
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const target = useRef<HTMLDivElement>(null);
+  const [previewWidth, setPreviewWidth] = useState(0);
+  const interactive = className.split(/\s+/).includes("large");
+  useEffect(() => {
+    if (interactive || !target.current) return;
+    const element = target.current;
+    setPreviewWidth(element.clientWidth);
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setPreviewWidth(entry.contentRect.width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [interactive]);
   useEffect(() => {
     let active = true;
     setURL("");
@@ -109,6 +121,15 @@ export function ArtifactPreview({
         <iframe
           title={`${artifact.title} 미리보기`}
           src={url}
+          style={
+            interactive
+              ? undefined
+              : {
+                  width: 1024,
+                  height: 640,
+                  transform: `scale(${previewWidth / 1024})`,
+                }
+          }
           onLoad={() => setLoaded(true)}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
         />
@@ -143,29 +164,29 @@ export function ArtifactCard({
       >
         <ArtifactPreview artifact={artifact} />
         <h3>{artifact.title}</h3>
-        <p>{artifact.description || "설명 없음"}</p>
+        <p className="artifact-description">
+          {artifact.description || "설명 없음"}
+        </p>
       </button>
       <div className="artifact-meta">
         <span className="owner-name">
           <Avatar name={artifact.ownerName || "F"} />
-          <span>{artifact.ownerName || "—"}</span>
+          <span>
+            <span>{artifact.ownerName || "—"}</span>
+            <small>{relative(artifact.updatedAt)} 수정</small>
+          </span>
         </span>
-        <span className="scope-label">
+        <span className={`scope-label scope-${artifact.visibility}`}>
           <VisibilityIcon value={artifact.visibility} />
           {visibilityLabels[artifact.visibility]}
         </span>
-      </div>
-      <div className="artifact-time">
-        {relative(artifact.updatedAt)} 수정 · {bytes(artifact.sizeBytes)}
-      </div>
-      <div className="artifact-card-actions">
-        <button onClick={onOpen}>
-          <ArrowUpRight size={16} />
-          열기
-        </button>
-        <button onClick={onShare} aria-label={`${artifact.title} 공유`}>
-          <Share2 size={15} />
-          공유
+        <button
+          className="icon-button artifact-share"
+          onClick={onShare}
+          aria-label={`${artifact.title} 공유`}
+          title="공유 설정"
+        >
+          <Share2 size={16} />
         </button>
       </div>
     </article>
@@ -198,13 +219,29 @@ export function SharePanel({
   const [members, setMembers] = useState<User[]>([]);
   const [q, setQ] = useState("");
   const a = useAction();
+  const sameExpiry =
+    (!expires && !artifact.expiresAt) ||
+    (expires &&
+      artifact.expiresAt &&
+      new Date(expires).getTime() === new Date(artifact.expiresAt).getTime());
+  const changed =
+    visibility !== artifact.visibility ||
+    !sameExpiry ||
+    (visibility === "selected" &&
+      [...ids].sort().join(",") !==
+        [...(artifact.memberIds || [])].sort().join(","));
   useEffect(() => {
     api<{ members: User[] }>("/api/members")
       .then((r) => setMembers(r.members || []))
       .catch(a.setError);
   }, []);
   return (
-    <Modal title="아티팩트 공유" drawer onClose={onClose}>
+    <Modal
+      title="아티팩트 공유"
+      drawer
+      className="artifact-sharing"
+      onClose={onClose}
+    >
       <div className="drawer-body">
         <div className="drawer-document">
           <FileText size={23} />
@@ -214,6 +251,13 @@ export function SharePanel({
               {artifact.ownerName} · {relative(artifact.updatedAt)} 수정
             </small>
           </div>
+        </div>
+        <div className="share-current-access">
+          <span>현재 공유 범위</span>
+          <span className={`scope-label scope-${artifact.visibility}`}>
+            <VisibilityIcon value={artifact.visibility} />
+            {visibilityLabels[artifact.visibility]}
+          </span>
         </div>
         <fieldset className="visibility-options">
           <legend>공유 범위</legend>
@@ -357,6 +401,11 @@ export function SharePanel({
         <ErrorBox error={a.error} />
       </div>
       <footer className="drawer-footer">
+        <p className="share-save-status" aria-live="polite">
+          {changed
+            ? "변경한 공유 범위는 저장 후 적용됩니다."
+            : "링크를 복사해도 공유 범위는 바뀌지 않습니다."}
+        </p>
         <button className="button secondary" onClick={onClose}>
           취소
         </button>
@@ -584,8 +633,17 @@ export function DetailPanel({
       .catch(a.setError);
   }, [artifact.id, artifact.currentVersionId]);
   return (
-    <Modal title={artifact.title} drawer wide onClose={onClose}>
+    <Modal
+      title={artifact.title}
+      drawer
+      wide
+      className="artifact-detail"
+      onClose={onClose}
+    >
       <div className="drawer-body detail-body">
+        <p className="detail-description">
+          {artifact.description || "아직 설명이 없습니다."}
+        </p>
         <div className="detail-actions">
           <a
             className="button secondary compact"
@@ -600,34 +658,68 @@ export function DetailPanel({
             공유
           </button>
         </div>
-        <div className="tabs">
-          <button
-            className={tab === "preview" ? "active" : ""}
-            onClick={() => setTab("preview")}
-          >
-            <BookOpen size={15} />
-            미리보기
-          </button>
-          <button
-            className={tab === "versions" ? "active" : ""}
-            onClick={() => setTab("versions")}
-          >
-            <History size={15} />
-            버전 {versions.length}
-          </button>
-        </div>
-        {tab === "preview" ? (
-          <>
-            <ArtifactPreview artifact={artifact} className="large" />
-            <p>{artifact.description || "아직 설명이 없습니다."}</p>
+        <div className="detail-layout">
+          <section className="detail-reading">
+            <div className="tabs">
+              <button
+                className={tab === "preview" ? "active" : ""}
+                onClick={() => setTab("preview")}
+              >
+                <BookOpen size={15} />
+                미리보기
+              </button>
+              <button
+                className={tab === "versions" ? "active" : ""}
+                onClick={() => setTab("versions")}
+              >
+                <History size={15} />
+                버전 {versions.length}
+              </button>
+            </div>
+            {tab === "preview" ? (
+              <ArtifactPreview artifact={artifact} className="large" />
+            ) : (
+              <div className="version-list">
+                {versions.map((v) => (
+                  <div className="version-item" key={v.id}>
+                    <span className="version-badge">v{v.number}</span>
+                    <div>
+                      <b>{v.message || "아티팩트 게시"}</b>
+                      <small>
+                        {date(v.createdAt)} · {bytes(v.sizeBytes)} ·{" "}
+                        {v.files.length}개 파일
+                      </small>
+                    </div>
+                    {v.id === artifact.currentVersionId ? (
+                      <span className="badge">현재</span>
+                    ) : (
+                      <button
+                        className="button secondary compact"
+                        disabled={!canManage || a.busy}
+                        onClick={() => setConfirm(`version:${v.id}`)}
+                      >
+                        <RotateCcw size={14} />
+                        복원
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+          <aside className="detail-inspector" aria-label="아티팩트 정보">
+            <h3>아티팩트 정보</h3>
             <dl className="detail-list">
               <div>
                 <dt>작성자</dt>
-                <dd>{artifact.ownerName}</dd>
+                <dd>
+                  <Avatar name={artifact.ownerName || "F"} />
+                  {artifact.ownerName}
+                </dd>
               </div>
               <div>
                 <dt>공유 범위</dt>
-                <dd>
+                <dd className={`scope-label scope-${artifact.visibility}`}>
                   <VisibilityIcon value={artifact.visibility} />
                   {visibilityLabels[artifact.visibility]}
                 </dd>
@@ -646,36 +738,17 @@ export function DetailPanel({
                   <dd>{date(artifact.expiresAt)}</dd>
                 </div>
               )}
-            </dl>
-          </>
-        ) : (
-          <div className="version-list">
-            {versions.map((v) => (
-              <div className="version-item" key={v.id}>
-                <span className="version-badge">v{v.number}</span>
-                <div>
-                  <b>{v.message || "아티팩트 게시"}</b>
-                  <small>
-                    {date(v.createdAt)} · {bytes(v.sizeBytes)} ·{" "}
-                    {v.files.length}개 파일
-                  </small>
-                </div>
-                {v.id === artifact.currentVersionId ? (
-                  <span className="badge">현재</span>
-                ) : (
-                  <button
-                    className="button secondary compact"
-                    disabled={!canManage || a.busy}
-                    onClick={() => setConfirm(`version:${v.id}`)}
-                  >
-                    <RotateCcw size={14} />
-                    복원
-                  </button>
-                )}
+              <div>
+                <dt>게시한 버전</dt>
+                <dd>{versions.length}개</dd>
               </div>
-            ))}
-          </div>
-        )}
+            </dl>
+            <button className="button secondary" onClick={onShare}>
+              <Share2 size={16} />
+              공유 설정 보기
+            </button>
+          </aside>
+        </div>
         <ErrorBox error={a.error} />
         {confirm && (
           <div className="confirm-inline" role="alert">

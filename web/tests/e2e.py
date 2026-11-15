@@ -119,6 +119,21 @@ def main():
                 modal.get_by_role('button', name='아티팩트 게시', exact=True).click()
                 expect(modal).to_have_count(0)
                 expect(page.get_by_role('button', name='Working prototype 열기')).to_be_visible()
+                thumbnail = page.get_by_role('button', name='Working prototype 열기').frame_locator('iframe')
+                expect(thumbnail.locator('#status')).to_have_text('Relative ES modules ready')
+                grid_frame = page.locator('.artifact-open iframe').first.element_handle().content_frame()
+                grid_viewport = grid_frame.evaluate('({width:innerWidth,height:innerHeight})')
+                page.screenshot(path=str(screenshots / 'thumbnail-grid-desktop.png'), full_page=True)
+                page.get_by_role('button', name='목록 보기', exact=True).click()
+                page.wait_for_function('''() => {
+                    const preview = document.querySelector('.artifact-open .artifact-preview');
+                    const frame = preview?.querySelector('iframe');
+                    return frame && Math.abs(frame.getBoundingClientRect().width - preview.clientWidth) < 1;
+                }''')
+                list_frame = page.locator('.artifact-open iframe').first.element_handle().content_frame()
+                assert list_frame.evaluate('({width:innerWidth,height:innerHeight})') == grid_viewport, 'Artifact composition must stay consistent between grid and list thumbnails'
+                page.screenshot(path=str(screenshots / 'thumbnail-list-desktop.png'), full_page=True)
+                page.get_by_role('button', name='그리드 보기', exact=True).click()
                 page.get_by_role('button', name='Working prototype 열기').click()
                 detail = page.get_by_role('dialog')
                 frame = detail.frame_locator('iframe')

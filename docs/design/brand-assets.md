@@ -1,5 +1,16 @@
 # Authentication brand assets
 
+## Current asset (v0.4.0)
+
+The login uses an independent folded-paper sculpture on a free page canvas. It is cropped by the viewport edge, without an illustration card, embedded UI screenshot or promotional feature blocks. Mobile omits the decorative stage to keep authentication immediately usable. The library and reading screens use actual isolated artifact content rather than generated preview images.
+
+- `web/public/images/folded-paper-v2.webp`: original generated transparent illustration, 1536 × 1024, 167846 bytes. Alpha preserved in WebP encoding.
+- Mode: built-in `image_gen`, new image, transparent background, no reference images. The original remains in the local generation folder; only the optimized production asset is distributed.
+- Direction: asymmetric architectural sculpture from a continuous cobalt folded-paper ribbon and off-white planes, tactile paper, controlled shadows, diagonal flow, no text, logo, UI cards, folders or background rectangle.
+- Fonts, Google sign-in asset and all runtime resources remain locally bundled. No generated concept or reference-product screenshot is shipped as a working screen.
+
+## Previous asset record (v0.3.0)
+
 The authentication surface keeps Workspace B typography, neutral controls and cobalt accents. It adds an original folded-paper illustration and a clearly labeled example of the real library, without inventing product data or customer claims. Mobile presents the login form first. All assets and fonts are embedded and need no runtime CDN.
 
 - `web/public/images/artifact-space-v1.webp`: original generated brand artwork, 1448 × 1086, 113,218 bytes. Illustration, not a product screenshot.

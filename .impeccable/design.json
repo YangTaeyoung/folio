@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-14T17:05:52.265823+00:00",
+  "generatedAt": "2026-11-15T18:12:34.443116+00:00",
   "title": "Design System: Folio",
   "extensions": {
     "colorMeta": {
@@ -188,16 +188,16 @@
       },
       "hover-border": {
         "role": "neutral",
-        "displayName": "Preview Focus Blue",
+        "displayName": "Preview Hover Border",
         "tonalRamp": [
-          "oklch(15% 0.16237 264.47)",
-          "oklch(26% 0.16237 264.47)",
-          "oklch(38% 0.16237 264.47)",
-          "oklch(49% 0.16237 264.47)",
-          "oklch(61% 0.16237 264.47)",
-          "oklch(72% 0.16237 264.47)",
-          "oklch(84% 0.16237 264.47)",
-          "oklch(95% 0.16237 264.47)"
+          "oklch(15% 0.067 263)",
+          "oklch(26% 0.067 263)",
+          "oklch(38% 0.067 263)",
+          "oklch(49% 0.067 263)",
+          "oklch(61% 0.067 263)",
+          "oklch(72% 0.067 263)",
+          "oklch(84% 0.067 263)",
+          "oklch(95% 0.067 263)"
         ]
       },
       "secondary-border": {
@@ -286,11 +286,7 @@
       },
       "card-title": {
         "displayName": "Card Title",
-        "purpose": "Artifact grid titles."
-      },
-      "card-title-mobile": {
-        "displayName": "Card Title Mobile",
-        "purpose": "Artifact grid titles at widths up to 600px."
+        "purpose": "Compact artifact grid titles at desktop and mobile."
       },
       "body": {
         "displayName": "Body",
@@ -307,6 +303,14 @@
       "code": {
         "displayName": "Code",
         "purpose": "Commands, keys and configuration."
+      },
+      "headline-compact": {
+        "displayName": "Compact Headline",
+        "purpose": "Page headings at widths up to 900px, above the mobile breakpoint."
+      },
+      "admin-section-title": {
+        "displayName": "Administrative Section Title",
+        "purpose": "Flat administrative section headings."
       }
     },
     "shadows": [
@@ -322,18 +326,13 @@
       },
       {
         "name": "artifact-focus",
-        "value": "0 0 0 1px #6290f8",
-        "purpose": "Card hover and focus-within ring."
+        "value": "0 4px 14px #16233a0a",
+        "purpose": "Restrained artifact-tile hover/focus-within lift; border shifts to #91a8d4."
       },
       {
         "name": "dialog",
         "value": "0 16px 70px #141a2c24",
         "purpose": "Blocking modal and drawer elevation."
-      },
-      {
-        "name": "auth-panel",
-        "value": "0 8px 30px #18233506",
-        "purpose": "Subtle depth under the first-run setup form."
       },
       {
         "name": "toast",
@@ -374,16 +373,36 @@
         "value": "600px"
       },
       {
+        "name": "admin-stack-max",
+        "value": "700px"
+      },
+      {
+        "name": "auth-form-only-max",
+        "value": "760px"
+      },
+      {
         "name": "compact-navigation-max",
         "value": "900px"
+      },
+      {
+        "name": "detail-stack-max",
+        "value": "1100px"
+      },
+      {
+        "name": "admin-compact-max",
+        "value": "1150px"
+      },
+      {
+        "name": "library-controls-stack-max",
+        "value": "1200px"
       },
       {
         "name": "two-column-grid-max",
         "value": "1250px"
       },
       {
-        "name": "wide-workspace-min",
-        "value": "1750px"
+        "name": "wide-auth-min",
+        "value": "1700px"
       }
     ]
   },
@@ -440,27 +459,34 @@
       "name": "Artifact Card",
       "kind": "card",
       "refersTo": "artifact-card",
-      "description": "Built card shown in its honest unavailable-preview state. Production uses the actual artifact launch URL, not this sample content.",
-      "html": "<article class=\"ds-card\"><button class=\"ds-card-open\" type=\"button\" aria-label=\"아티팩트 열기\"><span class=\"ds-card-preview\">미리보기를 불러오지 못했습니다.</span><span class=\"ds-card-title\">아티팩트</span><span class=\"ds-card-description\">HTML</span></button><div class=\"ds-card-actions\"><button type=\"button\">열기</button><button type=\"button\">공유</button></div></article>",
-      "css": ".ds-card{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;font-size:14px;line-height:1.55;max-width:340px;min-width:0;border:1px solid #d9dde5;background:#fff;border-radius:9px;overflow:hidden;transition:border-color .15s,box-shadow .15s;color:var(--ink,#18191c)}.ds-card:hover,.ds-card:focus-within{border-color:#6290f8;box-shadow:0 0 0 1px #6290f8}.ds-card-open{font-family:inherit;display:block;width:100%;border:0;background:none;color:inherit;text-align:left;padding:12px 12px 0;cursor:pointer}.ds-card-preview{display:flex;align-items:center;justify-content:center;aspect-ratio:16/10;border:1px solid #d5d9e2;background:#f2f4f7;border-radius:6px;color:#7a8391;font-size:12px}.ds-card-title{display:block;margin:13px 2px 3px;font-size:19px;line-height:1.5;font-weight:650;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-card-description{display:block;color:#69717e;font-size:13px;margin:0 2px 12px}.ds-card-actions{display:flex;border-top:1px solid #e9ebf0;background:#fafbfc;min-height:39px}.ds-card-actions button{font-family:inherit;font-size:12px;white-space:nowrap;flex:1;padding:9px 12px;border:0;background:transparent;color:#596578;cursor:pointer}.ds-card-actions button+button{border-left:1px solid #e9ebf0}.ds-card-actions button:hover{background:#edf2ff;color:#1e50ca}.ds-card-open:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px;outline-offset:-3px}.ds-card-actions button:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}"
+      "description": "Preview-led compact tile with title, owner/date, saved access and contextual share; no action footer.",
+      "html": "<article class=\"ds-artifact-card\"><button class=\"ds-artifact-open\"><span class=\"ds-artifact-preview\">아티팩트 미리보기</span><h3>팀 작업 노트</h3></button><div class=\"ds-artifact-meta\"><span class=\"ds-owner\"><span class=\"ds-avatar\">F</span><span>작성자<small>방금 전 수정</small></span></span><span class=\"ds-card-scope\">나만 보기</span><button class=\"ds-card-share\" aria-label=\"팀 작업 노트 공유\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><circle cx=\"18\" cy=\"5\" r=\"3\"/><circle cx=\"6\" cy=\"12\" r=\"3\"/><circle cx=\"18\" cy=\"19\" r=\"3\"/><path d=\"m8.6 10.5 6.8-4m-6.8 7 6.8 4\"/></svg></button></div></article>",
+      "css": ".ds-artifact-card{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;width:340px;max-width:100%;border:1px solid #d9dde5;border-radius:8px;background:var(--paper,#fff);color:var(--ink,#18191c);overflow:hidden;transition:border-color .15s ease,box-shadow .15s ease}.ds-artifact-card:hover,.ds-artifact-card:focus-within{border-color:#91a8d4;box-shadow:0 4px 14px #16233a0a}.ds-artifact-open{display:block;width:100%;padding:11px 11px 0;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer;font:inherit}.ds-artifact-preview{display:grid;place-items:center;aspect-ratio:16/10;background:#f2f4f7;border:1px solid #d5d9e2;border-radius:6px;color:#626976;font-size:12px}.ds-artifact-open h3{margin:14px 3px 13px;font-size:17px;font-weight:650;line-height:1.4;letter-spacing:-.025em}.ds-artifact-meta{display:grid;grid-template-columns:minmax(0,1fr) auto 28px;align-items:center;gap:7px;padding:0 13px 15px}.ds-owner{display:flex;gap:8px;font-size:12px;color:#515b6b}.ds-avatar{display:grid;place-items:center;border-radius:50%;width:24px;height:24px;background:#e4e8ef;font-size:10px}.ds-owner small{display:block;margin-top:2px;font-size:11px;color:#626d7e}.ds-card-scope{padding:4px 8px;border-radius:20px;color:#515b6b;background:#f1f3f7;font-size:12px;white-space:nowrap}.ds-card-share{display:inline-flex;align-items:center;justify-content:center;width:28px;height:30px;border:0;border-radius:6px;background:transparent;color:#596170;cursor:pointer}.ds-card-share:hover{background:#eceef2;color:var(--ink,#18191c)}.ds-artifact-open:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:-3px}.ds-card-share:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}"
     },
     {
       "name": "Sharing Option",
       "kind": "custom",
-      "description": "Selected audience radio with explicit owner and administrator semantics.",
+      "description": "Flat audience radio row; draft selection is distinct from the panel saved-access summary.",
       "html": "<label class=\"ds-visibility\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><rect x=\"4\" y=\"10\" width=\"16\" height=\"11\" rx=\"2\"/><path d=\"M8 10V6a4 4 0 0 1 8 0v4\"/></svg><span><b>나만 보기</b><small>작성자와 관리자만 접근</small></span><input type=\"radio\" name=\"ds-visibility\" checked /></label>",
-      "css": ".ds-visibility{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;line-height:1.55;display:flex;align-items:center;gap:12px;border:1px solid #dce0e7;border-radius:7px;padding:12px 13px;max-width:360px;cursor:pointer;color:var(--ink,#18191c)}.ds-visibility:has(input:checked){border-color:#4774e7;background:#f4f7ff}.ds-visibility>svg{color:#5d6c84}.ds-visibility>span{flex:1;min-width:0}.ds-visibility b{display:block;font-size:13px;font-weight:550}.ds-visibility small{display:block;color:#697485;font-size:12px;margin-top:2px}.ds-visibility input{margin:0;accent-color:var(--accent,#2258e8);width:16px;height:16px}.ds-visibility input:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}.ds-visibility:has(input:disabled){cursor:default}"
+      "css": ".ds-visibility{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;line-height:1.55;display:flex;align-items:center;gap:12px;border:0;border-top:1px solid #eceef2;border-radius:0;padding:15px 10px;max-width:360px;cursor:pointer;color:var(--ink,#18191c)}.ds-visibility:has(input:checked){background:#eef3ff}.ds-visibility>svg{color:#5d6c84}.ds-visibility>span{flex:1;min-width:0}.ds-visibility b{display:block;font-size:14px;font-weight:600}.ds-visibility small{display:block;color:#697485;font-size:12px;margin-top:2px;line-height:1.5}.ds-visibility input{margin:0;accent-color:var(--accent,#2258e8);width:16px;height:16px}.ds-visibility:hover{background:#f6f8fc}.ds-visibility:has(input:checked):hover{background:#eef3ff}.ds-visibility input:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}.ds-visibility:has(input:disabled){cursor:default}"
+    },
+    {
+      "name": "Administrative Disclosure",
+      "kind": "custom",
+      "description": "Native progressive setup guidance in a flat section.",
+      "html": "<details class=\"ds-admin-disclosure\"><summary><span>설치 정보</span><small>관리 주소와 콘텐츠 호스트</small></summary><div>현재 설치의 연결 정보를 확인합니다.</div></details>",
+      "css": ".ds-admin-disclosure{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;max-width:600px;color:var(--ink,#18191c);border-top:1px solid var(--line,#e2e4e9)}.ds-admin-disclosure>summary{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:8px 22px;padding:21px 24px 21px 0;list-style:none;cursor:pointer;font-size:15px;font-weight:600}.ds-admin-disclosure>summary::-webkit-details-marker{display:none}.ds-admin-disclosure>summary::after{content:\"+\";position:absolute;right:2px;top:20px;color:var(--muted,#626976);font-size:19px;font-weight:400;line-height:20px}.ds-admin-disclosure[open]>summary::after{content:\"−\"}.ds-admin-disclosure small{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted,#626976)}.ds-admin-disclosure>summary:hover{color:var(--ink,#18191c)}.ds-admin-disclosure>summary:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}.ds-admin-disclosure>div{padding:1px 0 26px;font-size:13px;color:var(--muted,#626976);line-height:1.7}"
     }
   ],
   "narrative": {
     "northStar": "The Artifact Workspace",
-    "overview": "Folio is a practical, contemporary workspace whose artifacts carry the visual interest. Cool gray navigation frames a white working canvas; clear sans-serif hierarchy, dark primary actions and blue selection make finding, opening and sharing work easy to scan. The shell is calm and precise, with restrained borders and enough room for real artifact previews.\n\nThis captures the built replacement world approved by the user as concept B on 2026-11-15: “B괜찮네 B로 가자, 이제 좀 프로덕트 같다.” The previous sage/ivory palette, bookish styling, serif wordmark, tiny labels and poetic library copy were rejected. The approved world is a product interface, with direct task labels and visible access state.",
+    "overview": "Folio is a practical, contemporary workspace whose artifacts carry the visual interest. Cool gray navigation frames a white working canvas; clear sans-serif hierarchy, black primary actions and cobalt selection make finding, opening and sharing work easy to scan. Actual artifact previews lead the library, the reading canvas leads detail, and aligned flat sections make administration legible.\n\nThis records the built composition overhaul within the user's approved B light-neutral, black-and-cobalt world. Folio keeps its own folded-page mark and locally bundled Pretendard. At login, an original transparent blue-and-white paper sculpture shares the page canvas and crops freely across its edge; the form remains unboxed. On mobile the form takes priority and the artwork stage disappears.",
     "keyCharacteristics": [
       "Neutral operating chrome around visually diverse artifacts.",
-      "Strong headings, readable cards and concise Korean task labels.",
-      "Black primary actions; blue selection, focus and active navigation.",
-      "Real previews and explicit audiences, with honest loading and failure states.",
-      "Locally bundled typography and assets."
+      "Compact, preview-led browsing with contextual sharing and explicit access.",
+      "A broad reading plane with a separate metadata aside.",
+      "Flat, aligned administration and progressive setup guidance.",
+      "Local typography and brand assets; direct Korean task labels."
     ],
     "rules": [
       {
@@ -470,7 +496,7 @@
       },
       {
         "name": "The Hierarchy Rule",
-        "body": "Preserve the approved heading and card-title hierarchy when adding screens; compact metadata must not set the scale of the whole interface.",
+        "body": "Preserve the established heading and card-title hierarchy; compact metadata must not set the scale of the whole interface.",
         "section": "typography"
       },
       {
@@ -481,19 +507,19 @@
     ],
     "dos": [
       "**Do** keep the gray navigation shell, white canvas, black primary actions and blue active state together.",
-      "**Do** preserve the established desktop and mobile heading/card-title hierarchy.",
-      "**Do** show actual artifact previews, explicit audience labels and honest loading, empty and error states.",
-      "**Do** keep local fonts and assets available without a runtime CDN.",
-      "**Do** retain keyboard focus, compact-navigation inertness, focus trapping and focus restoration.",
-      "**Do** identify showcase simulations and illustrative content as examples."
+      "**Do** preserve the established desktop/mobile heading scale and compact preview-led tiles.",
+      "**Do** keep owner, modification time, audience and contextual sharing close to each artifact.",
+      "**Do** give reading content the broad canvas and keep metadata contextual.",
+      "**Do** use flat aligned administrative sections and progressively disclosed setup guidance.",
+      "**Do** keep local fonts/assets, visible focus, honest states and the existing authorization controls."
     ],
     "donts": [
       "**Don't** restore the rejected sage/ivory, serif, bookish visual world or poetic library labels.",
-      "**Don't** fill the workspace with fabricated activity, usage, customers or health metrics.",
-      "**Don't** reduce primary task labels to metadata scale or let Korean action labels break character by character.",
-      "**Don't** express sharing scope or status through color alone.",
-      "**Don't** let a visually closed mobile sidebar remain keyboard reachable.",
-      "**Don't** turn the tour's composition or simulation into the authenticated workspace's source of truth."
+      "**Don't** confine all brand imagery to decorative cards or bring the login artwork stage onto mobile.",
+      "**Don't** restore repeated open/share tile footers or make a thumbnail viewport change with library view mode.",
+      "**Don't** substitute fabricated activity, customers, usage or health metrics for actual state.",
+      "**Don't** express sharing scope through color alone or imply that copying a link saves draft permissions.",
+      "**Don't** treat uploaded artifacts, research references or example-tour styling as shell design tokens."
     ]
   }
 }

@@ -2,9 +2,11 @@
 
 **An artifact library for your team and its agents, on your own infrastructure.**
 
-Publish static HTML sites with an `index.html` entry point and related assets: interactive reports, prototypes and presentations. Keep them private, share with your organization or selected people, or make a public link. Folio runs on your machine or internal network; its core needs no cloud account, email service, model subscription or Internet connection. Version0.1 requires `index.html`; standalone PDF/image-only publication is not supported.
+Publish static HTML sites with an `index.html` entry point and related assets: interactive reports, prototypes and presentations. Keep them private, share with your organization or selected people, or make a public link. Folio runs on your machine or internal network; its core needs no cloud account, email service, model subscription or Internet connection. Artifacts currently require `index.html`; standalone PDF/image-only publication is not supported.
 
 ![Folio artifact library with real published examples](docs/images/library-desktop.png)
+
+Screenshots use an actual local installation with authored example artifacts and test accounts.
 
 First-party code is [MIT licensed](LICENSE). [Installation and operations](INSTALL.md) · [HTTP API](docs/API.md) · [DNS guide](docs/dns.md)
 

@@ -1,0 +1,113 @@
+/* Keep the visually hidden table heading inside its scroll container. */
+.members-panel .table-scroll {
+  position: relative;
+}
+
+/* The form must shrink with the dialog so only its fields scroll. */
+.admin-storage-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.admin-storage-form > .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .members-panel .table-scroll {
+    overflow: visible;
+  }
+
+  .members-panel .members-table,
+  .members-panel .members-table tbody {
+    display: block;
+    width: 100%;
+    white-space: normal;
+  }
+
+  .members-panel .members-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .members-panel .members-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    padding: 20px 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .members-panel .members-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .members-panel .members-table td:first-child,
+  .members-panel .members-table td:nth-child(4),
+  .members-panel .members-table td:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .members-panel .members-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .members-panel .members-table td:nth-child(4)::before {
+    display: inline;
+    margin-right: 10px;
+  }
+
+  .members-panel .person-cell {
+    align-items: flex-start;
+  }
+
+  .members-panel .person-cell b,
+  .members-panel .person-cell small {
+    overflow-wrap: anywhere;
+  }
+
+  .members-panel .members-table .button-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .members-panel .members-table .button {
+    min-height: 36px;
+  }
+
+  .storage-summary.admin-storage-summary {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .storage-summary.admin-storage-summary > .storage-summary-icon {
+    grid-area: 1 / 1;
+  }
+
+  .storage-summary.admin-storage-summary > div:nth-child(2) {
+    grid-area: 2 / 1 / 3 / -1;
+    min-width: 0;
+  }
+
+  .storage-summary.admin-storage-summary > .badge {
+    grid-area: 1 / 2;
+    justify-self: end;
+    align-self: center;
+    margin-left: 0;
+  }
+}

@@ -110,12 +110,14 @@ export function Modal({
   onClose,
   wide = false,
   drawer = false,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   drawer?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
@@ -170,7 +172,7 @@ export function Modal({
     >
       <div
         ref={ref}
-        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""}`}
+        className={`${drawer ? "drawer" : "modal"} ${wide ? "wide" : ""} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

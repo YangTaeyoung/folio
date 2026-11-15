@@ -656,9 +656,6 @@ label {
 }
 .artifact-preview iframe {
   border: 0;
-  width: 400%;
-  height: 400%;
-  transform: scale(0.25);
   transform-origin: 0 0;
   pointer-events: none;
   background: white;

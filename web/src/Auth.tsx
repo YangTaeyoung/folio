@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowUpRight,
-  Eye,
-  EyeOff,
-  HardDrive,
-  KeyRound,
-  Layers,
-  ShieldCheck,
-} from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { api, json, setCSRF } from "./api";
 import type { Session } from "./types";
 import { ErrorBox, Field, Spinner, useAction } from "./ui";
+import "./AuthSurface.css";
 export function Brand() {
   return (
     <span className="brand">
@@ -45,25 +38,23 @@ export default function Auth({
       .catch(() => setGoogleEnabled(false));
   }, []);
   return (
-    <main className={`auth-page ${setup ? "auth-setup" : "auth-visual"}`}>
+    <main
+      className={`auth-page folio-auth ${setup ? "auth-setup" : "auth-visual"}`}
+    >
       <header className="auth-header">
         <Brand />
-        <span className="auth-header-note">
-          <Layers size={16} />
-          팀과 에이전트의 아티팩트 작업 공간
-        </span>
       </header>
       <div className="auth-layout">
         {!setup && (
           <section
-            className="auth-showcase"
-            aria-labelledby="auth-showcase-title"
+            className="auth-brand-stage"
+            aria-labelledby="auth-brand-title"
           >
-            <div className="auth-showcase-copy">
-              <h1 id="auth-showcase-title">
+            <div className="auth-brand-copy">
+              <h1 id="auth-brand-title">
                 만든 결과물을
                 <br />
-                팀의 자산으로.
+                함께 쓰는 공간.
               </h1>
               <p>
                 문서, 프로토타입, 작은 웹앱까지.
@@ -72,49 +63,16 @@ export default function Auth({
               </p>
             </div>
             <img
-              className="auth-artwork"
-              src="/images/artifact-space-v1.webp"
-              width="1448"
-              height="1086"
-              alt="파란 폴더와 종이 문서가 하나의 경로로 이어지는 일러스트"
+              className="auth-paper-sculpture"
+              src="/images/folded-paper-v2.webp"
+              width="1536"
+              height="1024"
+              alt=""
               fetchPriority="high"
             />
-            <div className="auth-showcase-capabilities">
-              <span>
-                <HardDrive size={16} />내 서버에 보관
-              </span>
-              <span>
-                <ShieldCheck size={16} />
-                공유 범위 직접 설정
-              </span>
-            </div>
-            <figure className="auth-product-peek">
-              <a
-                href="/images/workspace-preview-v1.png"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="작업 공간 예시 화면 크게 보기"
-              >
-                <img
-                  src="/images/workspace-preview-v1.png"
-                  width="1440"
-                  height="960"
-                  alt="Folio 아티팩트 라이브러리 예시 화면"
-                />
-              </a>
-              <figcaption>
-                <b>작업이 모이면, 함께 쓰기 쉽게.</b>
-                <p>미리보기부터 공유, 버전 관리까지 한곳에서.</p>
-                <a
-                  href="/images/workspace-preview-v1.png"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  제품 화면 예시 보기
-                  <ArrowUpRight size={14} />
-                </a>
-              </figcaption>
-            </figure>
+            <p className="auth-brand-note">
+              내 서버에 보관하고, 공유 범위는 직접 설정하세요.
+            </p>
           </section>
         )}
         <section className="auth-form-wrap">
@@ -137,7 +95,6 @@ export default function Auth({
               });
             }}
           >
-            {setup && <img className="auth-mark" src="/favicon.svg" alt="" />}
             <h2>{setup ? "작업 공간 만들기" : "작업 공간에 로그인"}</h2>
             <p className="subtle">
               {setup
@@ -249,11 +206,7 @@ export default function Auth({
             </button>
             {!setup && (
               <div className="auth-account-help">
-                <p>
-                  처음 이용하시나요?
-                  <br />
-                  조직 관리자가 생성한 계정으로 로그인할 수 있습니다.
-                </p>
+                <p>조직 관리자가 생성한 계정으로 로그인할 수 있습니다.</p>
                 <details>
                   <summary>계정 도움말</summary>
                   <p>

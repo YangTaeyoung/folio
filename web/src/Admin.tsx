@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { api, bytes, date, json, setCSRF } from "./api";
 import { GoogleAuthSettings } from "./GoogleAuthSettings";
+import "./ResponsiveAdmin.css";
+import "./AdminSurface.css";
 import type {
   Artifact,
   Audit,
@@ -105,7 +107,7 @@ export function MembersPage({ self }: { self: User }) {
   const a = useAction();
   const members = r.data?.members || [];
   return (
-    <>
+    <div className="admin-surface admin-members">
       <PageHeading
         title="구성원"
         description="구성원 계정을 만들고 조직의 접근 권한을 관리합니다."
@@ -139,11 +141,9 @@ export function MembersPage({ self }: { self: User }) {
           </button>
         </div>
       )}
-      <section className="panel">
+      <section className="panel members-panel">
         <div className="section-title">
-          <h2>
-            조직 구성원 <span className="count">{members.length}</span>
-          </h2>
+          <span className="admin-result-count">{members.length}명</span>
           <span className="subtle">초대 메일 없이 계정을 직접 생성합니다.</span>
         </div>
         {r.loading ? (
@@ -153,14 +153,14 @@ export function MembersPage({ self }: { self: User }) {
           </div>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="members-table" aria-label="조직 구성원">
               <thead>
                 <tr>
-                  <th>구성원</th>
-                  <th>역할</th>
-                  <th>상태</th>
-                  <th>가입일</th>
-                  <th>
+                  <th scope="col">구성원</th>
+                  <th scope="col">역할</th>
+                  <th scope="col">상태</th>
+                  <th scope="col">가입일</th>
+                  <th scope="col">
                     <span className="sr-only">관리</span>
                   </th>
                 </tr>
@@ -182,7 +182,7 @@ export function MembersPage({ self }: { self: User }) {
                         </span>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="역할">
                       <select
                         aria-label={`${u.name} 역할`}
                         value={u.role}
@@ -201,7 +201,7 @@ export function MembersPage({ self }: { self: User }) {
                         <option value="admin">관리자</option>
                       </select>
                     </td>
-                    <td>
+                    <td data-label="상태">
                       <span className={`badge ${u.disabled ? "muted" : ""}`}>
                         {u.disabled
                           ? "일시 중지"
@@ -210,7 +210,9 @@ export function MembersPage({ self }: { self: User }) {
                             : "활성"}
                       </span>
                     </td>
-                    <td className="subtle">{date(u.createdAt)}</td>
+                    <td className="subtle" data-label="가입일">
+                      {date(u.createdAt)}
+                    </td>
                     <td>
                       <div className="button-row">
                         {u.loginMethod === "google" ? (
@@ -395,7 +397,7 @@ export function MembersPage({ self }: { self: User }) {
           </footer>
         </Modal>
       )}
-    </>
+    </div>
   );
 }
 
@@ -487,7 +489,7 @@ export function StoragePage() {
   }
   const p = policy;
   return (
-    <>
+    <div className="admin-surface admin-storage">
       <PageHeading
         title="저장소와 보관"
         description="데이터는 선택한 저장소에, 보관 정책은 팀의 기준에 맞게."
@@ -506,7 +508,7 @@ export function StoragePage() {
       />
       <ErrorBox error={r.error || settings.error || usage.error || a.error} />
       {feedback && <Notice>{feedback}</Notice>}
-      <section className="panel storage-summary">
+      <section className="panel storage-summary admin-storage-summary">
         <div className="storage-summary-icon">
           <HardDrive size={28} />
         </div>
@@ -620,7 +622,7 @@ export function StoragePage() {
         )}
       </section>
       {p && (
-        <section className="panel">
+        <section className="panel admin-section admin-storage-policy">
           <div className="section-title">
             <h2>용량과 보관 정책</h2>
             <span className="subtle">
@@ -793,6 +795,7 @@ export function StoragePage() {
       {show && (
         <Modal title="저장소 연결" wide onClose={() => setShow(false)}>
           <form
+            className="admin-storage-form"
             onSubmit={(e) => {
               e.preventDefault();
               void a.run(async () => {
@@ -1000,7 +1003,7 @@ export function StoragePage() {
           </form>
         </Modal>
       )}
-    </>
+    </div>
   );
 }
 
@@ -1059,7 +1062,7 @@ export function DomainsPage() {
     return () => clearInterval(timer);
   }, [login?.id, login?.status]);
   return (
-    <>
+    <div className="admin-surface admin-domains">
       <PageHeading
         title="도메인"
         description="내부 도메인 또는 인터넷 주소를 아티팩트에 연결합니다."
@@ -1070,7 +1073,7 @@ export function DomainsPage() {
           </button>
         }
       />
-      <ErrorBox error={r.error || arts.error || a.error} />
+      <ErrorBox error={r.error || arts.error || connector.error || a.error} />
       {feedback && <Notice>{feedback}</Notice>}
       <section className="panel">
         <div className="section-title">
@@ -1084,11 +1087,13 @@ export function DomainsPage() {
             <Spinner />
           </div>
         ) : !r.data?.domains.length ? (
-          <Empty
-            icon={<Globe size={30} />}
-            heading="내 도메인으로 공유해 보세요"
-            description="Cloudflare로 연결하거나, DNS 서비스에 레코드를 직접 등록할 수 있습니다."
-          />
+          <div className="domain-empty">
+            <Globe size={26} />
+            <div>
+              <h3>아직 연결된 도메인이 없습니다.</h3>
+              <p>도메인을 추가하면 필요한 DNS 레코드를 안내합니다.</p>
+            </div>
+          </div>
         ) : (
           r.data.domains.map((d) => (
             <div className="domain-item" key={d.id}>
@@ -1215,110 +1220,113 @@ export function DomainsPage() {
           ))
         )}
       </section>
-      <section className="panel">
-        <div className="section-title">
-          <h2>
-            <Cloud size={19} />
+      <details
+        className="admin-disclosure domain-provider"
+        open={login ? true : undefined}
+      >
+        <summary>
+          <span className="admin-disclosure-title">
+            <Cloud size={18} />
             Cloudflare 연결
-          </h2>
-          <span className="subtle">
-            외부 연결을 선택한 경우에만 사용합니다.
           </span>
-        </div>
-        <div className="integration-columns">
-          <div>
-            <h3>계정으로 로그인</h3>
-            <p className="subtle">
-              공식 cloudflared 로그인으로 계정을 연결합니다. 서버에
-              cloudflared가 설치되어 있어야 합니다.
-            </p>
-            <button
-              className="button secondary"
-              disabled={a.busy}
-              onClick={() =>
+          <span className="subtle">DNS 자동 등록을 사용할 때 연결합니다.</span>
+        </summary>
+        <div className="admin-disclosure-body">
+          <div className="integration-columns">
+            <div>
+              <h3>계정으로 로그인</h3>
+              <p className="subtle">
+                공식 cloudflared 로그인으로 계정을 연결합니다. 서버에
+                cloudflared가 설치되어 있어야 합니다.
+              </p>
+              <button
+                className="button secondary"
+                disabled={a.busy}
+                onClick={() =>
+                  void a.run(async () => {
+                    const result = await api<{
+                      id: string;
+                      authorizationUrl: string;
+                      status: string;
+                      error?: string;
+                    }>("/api/admin/dns/cloudflare/login", json("POST"));
+                    if (result.error) throw new Error(result.error);
+                    if (result.status === "complete")
+                      setFeedback("Cloudflare 로그인이 완료되었습니다.");
+                    setLogin(result);
+                  })
+                }
+              >
+                <ExternalLink size={16} />
+                Cloudflare 로그인 시작
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
                 void a.run(async () => {
                   const result = await api<{
-                    id: string;
-                    authorizationUrl: string;
-                    status: string;
-                    error?: string;
-                  }>("/api/admin/dns/cloudflare/login", json("POST"));
-                  if (result.error) throw new Error(result.error);
-                  if (result.status === "complete")
-                    setFeedback("Cloudflare 로그인이 완료되었습니다.");
-                  setLogin(result);
-                })
-              }
+                    connected: boolean;
+                    zones: unknown[];
+                  }>(
+                    "/api/admin/dns/cloudflare/connect",
+                    json("POST", { apiToken: token }),
+                  );
+                  if (!result.connected)
+                    throw new Error("계정 연결을 확인하지 못했습니다.");
+                  setToken("");
+                  setFeedback(
+                    `Cloudflare 연결 완료 · ${result.zones.length}개 영역 확인`,
+                  );
+                });
+              }}
             >
-              <ExternalLink size={16} />
-              Cloudflare 로그인 시작
-            </button>
+              <h3>API 토큰으로 연결</h3>
+              <Field label="DNS 편집 권한이 있는 API 토큰">
+                <input
+                  required
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </Field>
+              <button className="button secondary" disabled={a.busy || !token}>
+                토큰 연결
+              </button>
+            </form>
           </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void a.run(async () => {
-                const result = await api<{
-                  connected: boolean;
-                  zones: unknown[];
-                }>(
-                  "/api/admin/dns/cloudflare/connect",
-                  json("POST", { apiToken: token }),
-                );
-                if (!result.connected)
-                  throw new Error("계정 연결을 확인하지 못했습니다.");
-                setToken("");
-                setFeedback(
-                  `Cloudflare 연결 완료 · ${result.zones.length}개 영역 확인`,
-                );
-              });
-            }}
-          >
-            <h3>API 토큰으로 연결</h3>
-            <Field label="DNS 편집 권한이 있는 API 토큰">
-              <input
-                required
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-            <button className="button secondary" disabled={a.busy || !token}>
-              토큰 연결
-            </button>
-          </form>
+          {login && (
+            <div className="login-progress">
+              <span className="badge">{login.status}</span>
+              {login.authorizationUrl && (
+                <a
+                  className="button primary compact"
+                  href={login.authorizationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {login.id === "domainconnect"
+                    ? "DNS 승인 페이지 열기"
+                    : "Cloudflare 열기"}
+                  <ArrowUpRight size={14} />
+                </a>
+              )}
+              <p className="subtle">
+                {login.status === "complete"
+                  ? "Cloudflare 계정 인증을 완료했습니다."
+                  : "새 창에서 승인 후 이 페이지로 돌아오세요."}
+              </p>
+            </div>
+          )}
         </div>
-        {login && (
-          <div className="login-progress">
-            <span className="badge">{login.status}</span>
-            {login.authorizationUrl && (
-              <a
-                className="button primary compact"
-                href={login.authorizationUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {login.id === "domainconnect"
-                  ? "DNS 승인 페이지 열기"
-                  : "Cloudflare 열기"}
-                <ArrowUpRight size={14} />
-              </a>
-            )}
-            <p className="subtle">
-              {login.status === "complete"
-                ? "Cloudflare 계정 인증을 완료했습니다."
-                : "새 창에서 승인 후 이 페이지로 돌아오세요."}
-            </p>
-          </div>
-        )}
-      </section>
-      <section className="panel">
-        <div className="section-title">
-          <h2>
-            <Link size={19} />
+      </details>
+      <details className="admin-disclosure domain-tunnel">
+        <summary>
+          <span className="admin-disclosure-title">
+            <Link size={18} />
             선택 사항 · 인터넷 연결
-          </h2>
+          </span>
           {connector.data && (
             <span className={`badge ${connector.data.healthy ? "" : "muted"}`}>
               {connector.data.healthy
@@ -1328,96 +1336,98 @@ export function DomainsPage() {
                   : "연결 안 됨"}
             </span>
           )}
+        </summary>
+        <div className="admin-disclosure-body">
+          <p className="subtle">
+            내부망 서버를 외부에 공개하려면 도메인 등록과 별도로 진입 경로가
+            필요합니다. 전용 Cloudflare Tunnel을 생성하고 실행할 수 있습니다.
+          </p>
+          <div className="form-grid">
+            <Field label="전용 터널 이름">
+              <input
+                value={tunnelName}
+                onChange={(e) => setTunnelName(e.target.value)}
+              />
+            </Field>
+            <Field
+              label="연결할 호스트 이름"
+              hint="쉼표로 구분한 정확한 호스트 이름을 입력하세요."
+            >
+              <input
+                value={hostnames}
+                onChange={(e) => setHostnames(e.target.value)}
+                placeholder="folio.example.com, demo.example.com"
+              />
+            </Field>
+          </div>
+          <div className="button-row">
+            <button
+              className="button secondary"
+              disabled={a.busy || !hostnames.trim()}
+              onClick={() =>
+                void a.run(async () => {
+                  await api(
+                    "/api/admin/dns/cloudflare/tunnel",
+                    json("POST", {
+                      name: tunnelName,
+                      hostnames: hostnames
+                        .split(",")
+                        .map((x) => x.trim())
+                        .filter(Boolean),
+                      create: true,
+                    }),
+                  );
+                  connector.reload();
+                  setFeedback(
+                    "전용 터널을 구성했습니다. 실행 버튼으로 연결해 주세요.",
+                  );
+                })
+              }
+            >
+              전용 터널 구성
+            </button>
+            <button
+              className="button primary"
+              disabled={a.busy || !connector.data?.configured}
+              onClick={() =>
+                void a.run(async () => {
+                  await api(
+                    "/api/admin/dns/cloudflare/tunnel/start",
+                    json("POST"),
+                  );
+                  connector.reload();
+                })
+              }
+            >
+              연결 실행
+            </button>
+            <button
+              className="button secondary"
+              disabled={a.busy || !connector.data?.running}
+              onClick={() =>
+                void a.run(async () => {
+                  await api(
+                    "/api/admin/dns/cloudflare/tunnel/stop",
+                    json("POST"),
+                  );
+                  connector.reload();
+                })
+              }
+            >
+              연결 중지
+            </button>
+            <button
+              className="icon-button"
+              title="연결 상태 새로고침"
+              aria-label="연결 상태 새로고침"
+              onClick={connector.reload}
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+          <ErrorBox error={connector.error} />
         </div>
-        <p className="subtle">
-          내부망 서버를 외부에 공개하려면 도메인 등록과 별도로 진입 경로가
-          필요합니다. 전용 Cloudflare Tunnel을 생성하고 실행할 수 있습니다.
-        </p>
-        <div className="form-grid">
-          <Field label="전용 터널 이름">
-            <input
-              value={tunnelName}
-              onChange={(e) => setTunnelName(e.target.value)}
-            />
-          </Field>
-          <Field
-            label="연결할 호스트 이름"
-            hint="쉼표로 구분한 정확한 호스트 이름을 입력하세요."
-          >
-            <input
-              value={hostnames}
-              onChange={(e) => setHostnames(e.target.value)}
-              placeholder="folio.example.com, demo.example.com"
-            />
-          </Field>
-        </div>
-        <div className="button-row">
-          <button
-            className="button secondary"
-            disabled={a.busy || !hostnames.trim()}
-            onClick={() =>
-              void a.run(async () => {
-                await api(
-                  "/api/admin/dns/cloudflare/tunnel",
-                  json("POST", {
-                    name: tunnelName,
-                    hostnames: hostnames
-                      .split(",")
-                      .map((x) => x.trim())
-                      .filter(Boolean),
-                    create: true,
-                  }),
-                );
-                connector.reload();
-                setFeedback(
-                  "전용 터널을 구성했습니다. 실행 버튼으로 연결해 주세요.",
-                );
-              })
-            }
-          >
-            전용 터널 구성
-          </button>
-          <button
-            className="button primary"
-            disabled={a.busy || !connector.data?.configured}
-            onClick={() =>
-              void a.run(async () => {
-                await api(
-                  "/api/admin/dns/cloudflare/tunnel/start",
-                  json("POST"),
-                );
-                connector.reload();
-              })
-            }
-          >
-            연결 실행
-          </button>
-          <button
-            className="button secondary"
-            disabled={a.busy || !connector.data?.running}
-            onClick={() =>
-              void a.run(async () => {
-                await api(
-                  "/api/admin/dns/cloudflare/tunnel/stop",
-                  json("POST"),
-                );
-                connector.reload();
-              })
-            }
-          >
-            연결 중지
-          </button>
-          <button
-            className="icon-button"
-            title="연결 상태 새로고침"
-            aria-label="연결 상태 새로고침"
-            onClick={connector.reload}
-          >
-            <RefreshCw size={16} />
-          </button>
-        </div>
-        <ErrorBox error={connector.error} />
-      </section>
+      </details>
       {show && (
         <Modal title="아티팩트 도메인 연결" onClose={() => setShow(false)}>
           <form
@@ -1516,7 +1526,7 @@ export function DomainsPage() {
           </form>
         </Modal>
       )}
-    </>
+    </div>
   );
 }
 
@@ -1541,26 +1551,17 @@ export function AgentsPage() {
     2,
   );
   return (
-    <>
+    <div className="admin-surface admin-agents">
       <PageHeading
         title="에이전트 연결"
         description="모델이나 구독에 종속되지 않는 MCP 도구와 CLI를 연결하세요."
       />
       <ErrorBox error={r.error || a.error} />
-      <div className="agent-intro">
-        <div className="agent-glyph">
-          <Terminal size={30} />
-        </div>
-        <div>
-          <h2>만들기는 에이전트에게, 공유는 Folio로.</h2>
-          <p>
-            파일과 폴더를 게시하고, 버전을 갱신하고, 공유할 사람을 지정합니다.
-            <br />
-            에이전트도 계정에 허용된 범위 안에서만 작업합니다.
-          </p>
-        </div>
-      </div>
-      <div className="two-columns">
+      <p className="agent-context">
+        <Terminal size={17} />
+        API 토큰으로 허용할 작업을 정한 뒤 MCP 또는 CLI를 연결하세요.
+      </p>
+      <div className="agent-setup">
         <section className="panel">
           <div className="section-title">
             <h2>1. API 토큰 발급</h2>
@@ -1655,15 +1656,17 @@ export function AgentsPage() {
           </p>
           <pre className="code-block">{mcp}</pre>
           <CopyButton text={mcp} label="설정 복사" />
-          <h3 className="mt">CLI로 바로 게시</h3>
-          <pre className="code-block">
-            {"folio login --token-stdin --url " +
-              location.origin +
-              "\nfolio publish ./my-artifact\nfolio mcp"}
-          </pre>
-          <p className="subtle">
-            지원 도구: 아티팩트 목록·검색·게시·수정·공유·보관·복원·한도 확인
-          </p>
+          <details className="admin-code-guide">
+            <summary>CLI로 바로 게시</summary>
+            <pre className="code-block">
+              {"folio login --token-stdin --url " +
+                location.origin +
+                "\nfolio publish ./my-artifact\nfolio mcp"}
+            </pre>
+            <p className="subtle">
+              지원 도구: 아티팩트 목록·검색·게시·수정·공유·보관·복원·한도 확인
+            </p>
+          </details>
         </section>
       </div>
       <section className="panel">
@@ -1702,7 +1705,7 @@ export function AgentsPage() {
           ))
         )}
       </section>
-    </>
+    </div>
   );
 }
 
@@ -1720,14 +1723,17 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
     if (r.data) setName(r.data.organization.name);
   }, [r.data]);
   return (
-    <>
+    <div className="admin-surface admin-settings">
       <PageHeading
         title="조직 설정"
         description="조직 이름과 설치 정보를 확인합니다."
       />
       <ErrorBox error={r.error || a.error} />
-      <section className="panel">
-        <h2>조직 정보</h2>
+      <section className="panel admin-section">
+        <div className="admin-section-heading">
+          <h2>조직 정보</h2>
+          <p>작업 공간에서 사용할 이름입니다.</p>
+        </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1764,39 +1770,44 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
           )}
         </form>
       </section>
-      <section className="panel">
-        <h2>설치 정보</h2>
-        <dl className="detail-list">
-          <div>
-            <dt>관리 주소</dt>
-            <dd>{r.data?.appUrl}</dd>
-          </div>
-          <div>
-            <dt>아티팩트 주소</dt>
-            <dd>{r.data?.contentUrl}</dd>
-          </div>
-          <div>
-            <dt>배포 방식</dt>
-            <dd>설치형 · 단일 조직</dd>
-          </div>
-          <div>
-            <dt>라이선스</dt>
-            <dd>MIT · Open source</dd>
-          </div>
-        </dl>
-        <Notice>
-          아티팩트는 관리 페이지와 분리된 도메인에서 실행합니다. 주소 변경은
-          서버 설정에서 적용해 주세요.
-        </Notice>
-      </section>
       <GoogleAuthSettings />
-    </>
+      <details className="admin-disclosure admin-installation">
+        <summary>
+          <span className="admin-disclosure-title">설치 정보</span>
+          <span className="subtle">관리 주소와 콘텐츠 호스트</span>
+        </summary>
+        <div className="admin-disclosure-body">
+          <dl className="detail-list">
+            <div>
+              <dt>관리 주소</dt>
+              <dd>{r.data?.appUrl}</dd>
+            </div>
+            <div>
+              <dt>아티팩트 주소</dt>
+              <dd>{r.data?.contentUrl}</dd>
+            </div>
+            <div>
+              <dt>배포 방식</dt>
+              <dd>설치형 · 단일 조직</dd>
+            </div>
+            <div>
+              <dt>라이선스</dt>
+              <dd>MIT · Open source</dd>
+            </div>
+          </dl>
+          <Notice>
+            아티팩트는 관리 페이지와 분리된 도메인에서 실행합니다. 주소 변경은
+            서버 설정에서 적용해 주세요.
+          </Notice>
+        </div>
+      </details>
+    </div>
   );
 }
 export function AuditPage() {
   const r = useResource<{ events: Audit[] }>("/api/admin/audit?limit=100");
   return (
-    <>
+    <div className="admin-surface admin-audit">
       <PageHeading
         title="변경 기록"
         description="계정, 공유, 게시와 보관 정책의 변경을 확인합니다."
@@ -1837,7 +1848,7 @@ export function AuditPage() {
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }
 
@@ -1854,7 +1865,7 @@ export function AccountPage({
   const [saved, setSaved] = useState(false);
   const a = useAction();
   return (
-    <>
+    <div className="admin-surface admin-account">
       <PageHeading
         title="내 계정"
         description={
@@ -1863,8 +1874,10 @@ export function AccountPage({
             : "계정 정보를 확인하고 비밀번호를 변경합니다."
         }
       />
-      <section className="panel">
-        <h2>계정 정보</h2>
+      <section className="panel admin-section">
+        <div className="admin-section-heading">
+          <h2>계정 정보</h2>
+        </div>
         <dl className="detail-list">
           <div>
             <dt>이름</dt>
@@ -1881,27 +1894,31 @@ export function AccountPage({
         </dl>
       </section>
       {session.user.loginMethod === "google" ? (
-        <section className="panel">
-          <h2>Google 로그인</h2>
-          <p className="subtle">
-            Google 계정으로 로그인하는 계정입니다. 비밀번호는 Google 계정에서
-            관리하며 Folio 비밀번호는 사용하지 않습니다.
-          </p>
-          <a
-            className="button secondary"
-            href="https://myaccount.google.com/security"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Google 계정 보안 설정 <ExternalLink size={15} />
-          </a>
+        <section className="panel admin-section">
+          <div className="admin-section-heading">
+            <h2>Google 로그인</h2>
+          </div>
+          <div>
+            <p className="subtle">
+              Google 계정으로 로그인하는 계정입니다. 비밀번호는 Google 계정에서
+              관리하며 Folio 비밀번호는 사용하지 않습니다.
+            </p>
+            <a
+              className="button secondary"
+              href="https://myaccount.google.com/security"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Google 계정 보안 설정 <ExternalLink size={15} />
+            </a>
+          </div>
         </section>
       ) : (
-        <section className="panel">
-          <h2>비밀번호 변경</h2>
-          <p className="subtle">
-            변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.
-          </p>
+        <section className="panel admin-section">
+          <div className="admin-section-heading">
+            <h2>비밀번호 변경</h2>
+            <p>변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.</p>
+          </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1968,6 +1985,6 @@ export function AccountPage({
           </form>
         </section>
       )}
-    </>
+    </div>
   );
 }

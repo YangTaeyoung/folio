@@ -189,57 +189,67 @@ export function GoogleAuthSettings() {
                 </div>
               </fieldset>
             </form>
-            <div className="google-auth-guide">
-              <h3>Google Cloud에서 연결하기</h3>
-              <ol>
-                <li>
-                  이 설치 소유자의 Google Cloud 프로젝트에서 Google Auth
-                  Platform의 브랜딩과 대상을 설정합니다. 테스트 상태라면
-                  로그인할 계정을 테스트 사용자로 추가합니다.
-                </li>
-                <li>
-                  클라이언트 유형을 <b>웹 애플리케이션</b>으로 만들고, 아래
-                  주소를 <b>승인된 리디렉션 URI</b>에 그대로 등록합니다.
-                </li>
-                <li>
-                  Client ID와 Client Secret을 위에 입력하고 Google 로그인을 켠
-                  뒤 저장합니다.
-                </li>
-                <li>
-                  구성원 메뉴에서 사용할 이메일을 미리 등록한 후 Google 로그인을
-                  확인합니다. 기존 비밀번호 관리자 계정은 복구용으로 유지해
-                  주세요.
-                </li>
-              </ol>
-              <Field
-                label="승인된 리디렉션 URI"
-                hint="현재 서버의 관리 주소로 생성한 콜백 주소입니다. Google Cloud에 동일하게 등록합니다."
-              >
-                <input
-                  readOnly
-                  value={config.redirectURI}
-                  spellCheck={false}
-                  onFocus={(event) => event.target.select()}
-                />
-              </Field>
-              <div className="google-auth-links">
-                <CopyButton text={config.redirectURI} label="콜백 주소 복사" />
-                <a
-                  href="https://developers.google.com/identity/openid-connect/openid-connect"
-                  target="_blank"
-                  rel="noreferrer"
+            <details className="google-auth-guide admin-disclosure">
+              <summary>
+                <span className="admin-disclosure-title">
+                  Google Cloud에서 연결하기
+                </span>
+                <span className="subtle">설정 순서와 콜백 주소</span>
+              </summary>
+              <div className="admin-disclosure-body">
+                <ol>
+                  <li>
+                    이 설치 소유자의 Google Cloud 프로젝트에서 Google Auth
+                    Platform의 브랜딩과 대상을 설정합니다. 테스트 상태라면
+                    로그인할 계정을 테스트 사용자로 추가합니다.
+                  </li>
+                  <li>
+                    클라이언트 유형을 <b>웹 애플리케이션</b>으로 만들고, 아래
+                    주소를 <b>승인된 리디렉션 URI</b>에 그대로 등록합니다.
+                  </li>
+                  <li>
+                    Client ID와 Client Secret을 위에 입력하고 Google 로그인을 켠
+                    뒤 저장합니다.
+                  </li>
+                  <li>
+                    구성원 메뉴에서 사용할 이메일을 미리 등록한 후 Google
+                    로그인을 확인합니다. 기존 비밀번호 관리자 계정은 복구용으로
+                    유지해 주세요.
+                  </li>
+                </ol>
+                <Field
+                  label="승인된 리디렉션 URI"
+                  hint="현재 서버의 관리 주소로 생성한 콜백 주소입니다. Google Cloud에 동일하게 등록합니다."
                 >
-                  Google 로그인 공식 안내 <ExternalLink size={13} />
-                </a>
-                <a
-                  href="https://developers.google.com/workspace/guides/create-credentials"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  OAuth 클라이언트 만들기 <ExternalLink size={13} />
-                </a>
+                  <input
+                    readOnly
+                    value={config.redirectURI}
+                    spellCheck={false}
+                    onFocus={(event) => event.target.select()}
+                  />
+                </Field>
+                <div className="google-auth-links">
+                  <CopyButton
+                    text={config.redirectURI}
+                    label="콜백 주소 복사"
+                  />
+                  <a
+                    href="https://developers.google.com/identity/openid-connect/openid-connect"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Google 로그인 공식 안내 <ExternalLink size={13} />
+                  </a>
+                  <a
+                    href="https://developers.google.com/workspace/guides/create-credentials"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    OAuth 클라이언트 만들기 <ExternalLink size={13} />
+                  </a>
+                </div>
               </div>
-            </div>
+            </details>
             <Notice>
               Google 로그인은 자동 가입이나 관리자 권한을 부여하지 않습니다.
               Gmail 또는 Google Workspace에서 확인한 이메일이 기존 계정과
