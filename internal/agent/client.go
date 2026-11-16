@@ -148,16 +148,19 @@ func (c *Client) JSON(ctx context.Context, method, path string, in any) (map[str
 }
 
 type PublishInput struct {
-	Path          string   `json:"path" jsonschema:"Absolute path to a file or directory on this MCP server machine. Hidden files and symlinks are refused or excluded."`
-	Title         string   `json:"title,omitempty" jsonschema:"Human-readable artifact title. If omitted on update, retain the current title; on creation use the local file or directory name."`
-	Description   string   `json:"description,omitempty"`
-	Slug          string   `json:"slug,omitempty"`
-	ArtifactID    string   `json:"artifactId,omitempty" jsonschema:"Existing artifact ID for publishing a new revision; omit to create"`
-	BaseVersionID string   `json:"baseVersionId,omitempty" jsonschema:"Required for updates: currentVersionId from folio_inspect. Stale updates return conflict."`
-	Message       string   `json:"message,omitempty"`
-	Visibility    string   `json:"visibility,omitempty" jsonschema:"private (default), organization, selected, or public. Change only as requested by the user."`
-	MemberIDs     []string `json:"memberIds,omitempty"`
-	ExpiresAt     string   `json:"expiresAt,omitempty"`
+	Draft         bool             `json:"draft,omitempty" jsonschema:"Keep this revision in review instead of changing the official URL. Once enabled future revisions stay drafts until promoted."`
+	Tags          []string         `json:"tags,omitempty"`
+	Provenance    *CreationContext `json:"provenance,omitempty"`
+	Path          string           `json:"path" jsonschema:"Absolute path to a file or directory on this MCP server machine. Hidden files and symlinks are refused or excluded."`
+	Title         string           `json:"title,omitempty" jsonschema:"Human-readable artifact title. If omitted on update, retain the current title; on creation use the local file or directory name."`
+	Description   string           `json:"description,omitempty"`
+	Slug          string           `json:"slug,omitempty"`
+	ArtifactID    string           `json:"artifactId,omitempty" jsonschema:"Existing artifact ID for publishing a new revision; omit to create"`
+	BaseVersionID string           `json:"baseVersionId,omitempty" jsonschema:"Required for updates: currentVersionId from folio_inspect. Stale updates return conflict."`
+	Message       string           `json:"message,omitempty"`
+	Visibility    string           `json:"visibility,omitempty" jsonschema:"private (default), organization, selected, or public. Change only as requested by the user."`
+	MemberIDs     []string         `json:"memberIds,omitempty"`
+	ExpiresAt     string           `json:"expiresAt,omitempty"`
 }
 type uploadFile struct {
 	path, source string
@@ -274,7 +277,13 @@ func (c *Client) Publish(ctx context.Context, in PublishInput) (map[string]any, 
 	if in.Title == "" && in.ArtifactID == "" {
 		in.Title = filepath.Base(abs)
 	}
-	meta := map[string]any{"message": in.Message}
+	meta := map[string]any{"message": in.Message, "draft": in.Draft}
+	if in.Tags != nil {
+		meta["tags"] = in.Tags
+	}
+	if in.Provenance != nil {
+		meta["provenance"] = in.Provenance
+	}
 	// Revision metadata is optional. Omit unspecified fields so the server
 	// atomically preserves its current values, including concurrent metadata edits.
 	if in.ArtifactID == "" || in.Title != "" {

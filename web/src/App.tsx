@@ -1,6 +1,12 @@
+import { t as translate, useLocale } from "./i18n";
+import { LanguageSelector } from "./LanguageSelector";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
+  FolderOpen,
+  Star,
+  Trash2,
+  DatabaseBackup,
   ArrowUpRight,
   Globe,
   Grid2X2,
@@ -21,6 +27,8 @@ import {
 } from "lucide-react";
 import { api, bytes, json, setCSRF } from "./api";
 import type { Artifact, Policy, Session } from "./types";
+import { CollectionsView } from "./WorkspaceFeatures";
+import { TrashView, BackupSettings, GuestViewer } from "./OperationsFeatures";
 import Auth, { Brand, PasswordChange } from "./Auth";
 import {
   ArtifactCard,
@@ -47,6 +55,10 @@ type View =
   | "mine"
   | "shared"
   | "archive"
+  | "collections"
+  | "favorites"
+  | "trash"
+  | "backups"
   | "members"
   | "storage"
   | "domains"
@@ -54,23 +66,28 @@ type View =
   | "settings"
   | "audit"
   | "account";
-const nav = [
-  { id: "library", label: "전체 아티팩트", icon: Layers },
-  { id: "mine", label: "내 아티팩트", icon: UserRound },
-  { id: "shared", label: "조직 공유함", icon: Users },
-  { id: "archive", label: "아카이브", icon: Archive },
+const getNav = () => [
+  { id: "library", label: translate("전체 아티팩트"), icon: Layers },
+  { id: "mine", label: translate("내 아티팩트"), icon: UserRound },
+  { id: "shared", label: translate("조직 공유함"), icon: Users },
+  { id: "favorites", label: translate("즐겨찾기"), icon: Star },
+  { id: "collections", label: translate("컬렉션"), icon: FolderOpen },
+  { id: "trash", label: translate("휴지통"), icon: Trash2 },
+  { id: "archive", label: translate("아카이브"), icon: Archive },
 ];
-const management = [
-  { id: "members", label: "구성원", icon: Users },
-  { id: "storage", label: "저장소와 보관", icon: HardDrive },
-  { id: "domains", label: "도메인", icon: Globe },
-  { id: "agents", label: "에이전트", icon: Sparkles },
-  { id: "settings", label: "조직 설정", icon: Settings },
-  { id: "audit", label: "변경 기록", icon: History },
-  { id: "account", label: "내 계정", icon: UserRound },
+const getManagement = () => [
+  { id: "members", label: translate("구성원"), icon: Users },
+  { id: "storage", label: translate("저장소와 보관"), icon: HardDrive },
+  { id: "domains", label: translate("도메인"), icon: Globe },
+  { id: "agents", label: translate("에이전트"), icon: Sparkles },
+  { id: "settings", label: translate("조직 설정"), icon: Settings },
+  { id: "backups", label: translate("백업 및 복원"), icon: DatabaseBackup },
+  { id: "audit", label: translate("변경 기록"), icon: History },
+  { id: "account", label: translate("내 계정"), icon: UserRound },
 ];
 
 export default function App() {
+  useLocale();
   const [session, setSession] = useState<Session | null>(null);
   const [setup, setSetup] = useState(false);
   const [ready, setReady] = useState(false);
@@ -86,6 +103,10 @@ export default function App() {
     return () => window.removeEventListener("folio:session-expired", expired);
   }, []);
   useEffect(() => {
+    if (location.pathname.startsWith("/g/")) {
+      setReady(true);
+      return;
+    }
     let active = true;
     api<{ needsSetup: boolean }>("/api/bootstrap")
       .then(async (info) => {
@@ -124,7 +145,7 @@ export default function App() {
       <div className="boot-screen">
         <Brand />
         <Spinner />
-        <p>작업 공간을 준비하고 있습니다.</p>
+        <p>{translate("작업 공간을 준비하고 있습니다.")}</p>
       </div>
     );
   if (error)
@@ -133,10 +154,12 @@ export default function App() {
         <Brand />
         <ErrorBox error={error} />
         <button className="button secondary" onClick={() => location.reload()}>
-          다시 시도
+          {translate("다시 시도")}
         </button>
       </div>
     );
+  if (location.pathname.startsWith("/g/"))
+    return <GuestViewer id={decodeURIComponent(location.pathname.slice(3))} />;
   if (setup || login || (!session && !viewer))
     return <Auth setup={setup} onLogin={authenticated} />;
   if (session?.user.mustChangePassword)
@@ -165,9 +188,10 @@ function Viewer({
   session: Session | null;
   onLogin: () => void;
 }) {
+  useLocale();
   const slug = decodeURIComponent(location.pathname.slice(3));
   const r = useResource<{ artifact: Artifact }>(
-    `/api/share/${encodeURIComponent(slug)}`,
+    `/api/share/${encodeURIComponent(slug)}${location.search}`,
     session ? 1 : 0,
   );
   const [url, setURL] = useState("");
@@ -175,10 +199,15 @@ function Viewer({
   useEffect(() => {
     if (!r.data) return;
     let active = true;
-    const hostname = new URLSearchParams(location.search).get("domain");
+    const query = new URLSearchParams(location.search);
+    const hostname = query.get("domain");
+    const versionId = query.get("version") || undefined;
     api<{ url: string }>(
       `/api/artifacts/${r.data.artifact.id}/launch`,
-      json("POST", hostname ? { hostname } : {}),
+      json("POST", {
+        ...(hostname ? { hostname } : {}),
+        ...(versionId ? { versionId } : {}),
+      }),
     )
       .then((result) => {
         if (active) setURL(result.url);
@@ -193,11 +222,12 @@ function Viewer({
   return (
     <main className="viewer">
       <header className="viewer-header">
-        <a href="/" aria-label="Folio 작업 공간">
+        <a href="/" aria-label={translate("Folio 작업 공간")}>
           <Brand />
         </a>
-        <span>{r.data?.artifact.title || "공유된 아티팩트"}</span>
+        <span>{r.data?.artifact.title || translate("공유된 아티팩트")}</span>
         <div>
+          <LanguageSelector />
           {r.data && (
             <small className="scope-label">
               {visibilityLabels[r.data.artifact.visibility]}
@@ -205,12 +235,12 @@ function Viewer({
           )}
           {session ? (
             <a className="button secondary compact" href="/">
-              작업 공간
+              {translate("작업 공간")}
               <ArrowUpRight size={15} />
             </a>
           ) : (
             <button className="button secondary compact" onClick={onLogin}>
-              로그인
+              {translate("로그인")}
             </button>
           )}
         </div>
@@ -222,16 +252,18 @@ function Viewer({
       ) : r.error ? (
         <Empty
           icon={<ShieldCheck size={32} />}
-          heading="이 아티팩트를 열 수 없습니다"
-          description="접근 권한이 없거나 공유가 종료되었습니다. 계정으로 로그인해 권한을 확인하세요."
+          heading={translate("이 아티팩트를 열 수 없습니다")}
+          description={translate(
+            "접근 권한이 없거나 공유가 종료되었습니다. 계정으로 로그인해 권한을 확인하세요.",
+          )}
           action={
             !session ? (
               <button className="button primary" onClick={onLogin}>
-                로그인
+                {translate("로그인")}
               </button>
             ) : (
               <a className="button secondary" href="/">
-                작업 공간으로
+                {translate("작업 공간으로")}
               </a>
             )
           }
@@ -241,7 +273,7 @@ function Viewer({
       ) : url ? (
         <iframe
           className="viewer-frame"
-          title={r.data?.artifact.title || "아티팩트"}
+          title={r.data?.artifact.title || translate("아티팩트")}
           src={url}
           sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
         />
@@ -263,9 +295,10 @@ function Workspace({
   onSession: (s: Session) => void;
   onLogout: () => Promise<void>;
 }) {
+  useLocale();
   const [view, setView] = useState<View>(() => {
     const hash = location.hash.slice(1);
-    return [...nav, ...management].some((n) => n.id === hash)
+    return [...getNav(), ...getManagement()].some((n) => n.id === hash)
       ? (hash as View)
       : "library";
   });
@@ -339,7 +372,7 @@ function Workspace({
     usage: { usedBytes: number; quotaBytes: number };
     policy: Policy;
   }>(
-    `/api/artifacts?${new URLSearchParams({ ...(mode ? { view: mode } : {}), q: search, sort })}`,
+    `/api/artifacts?${new URLSearchParams({ ...(mode ? { view: mode } : {}), q: search, sort, ...(view === "favorites" ? { favorite: "true" } : {}) })}`,
     revision,
   );
   const isAdmin = session.user.role === "admin";
@@ -355,7 +388,7 @@ function Workspace({
     setSelected(null);
     setShare(null);
   }
-  function changed(message = "변경 사항을 저장했습니다.") {
+  function changed(message = translate("변경 사항을 저장했습니다.")) {
     setRevision((n) => n + 1);
     setToast(message);
     setTimeout(() => setToast(""), 3500);
@@ -376,7 +409,9 @@ function Workspace({
     function key(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        if (!["library", "mine", "shared", "archive"].includes(view))
+        if (
+          !["library", "mine", "shared", "archive", "favorites"].includes(view)
+        )
           go("library");
         setTimeout(() => searchRef.current?.focus(), 0);
       }
@@ -388,28 +423,36 @@ function Workspace({
   useEffect(() => {
     function back() {
       const next = location.hash.slice(1);
-      if ([...nav, ...management].some((n) => n.id === next))
+      if ([...getNav(), ...getManagement()].some((n) => n.id === next))
         setView(next as View);
     }
     window.addEventListener("hashchange", back);
     return () => window.removeEventListener("hashchange", back);
   }, []);
   const artifacts = r.data?.artifacts || [];
-  const library = ["library", "mine", "shared", "archive"].includes(view);
+  const library = [
+    "library",
+    "mine",
+    "shared",
+    "archive",
+    "favorites",
+  ].includes(view);
   const title =
-    view === "mine"
-      ? "내 아티팩트"
-      : view === "shared"
-        ? "조직 공유함"
-        : view === "archive"
-          ? "아카이브"
-          : "전체 아티팩트";
+    view === "favorites"
+      ? translate("즐겨찾기")
+      : view === "mine"
+        ? translate("내 아티팩트")
+        : view === "shared"
+          ? translate("조직 공유함")
+          : view === "archive"
+            ? translate("아카이브")
+            : translate("전체 아티팩트");
   return (
     <div className="app-shell">
       {mobile && (
         <button
           className="nav-scrim"
-          aria-label="탐색 닫기"
+          aria-label={translate("탐색 닫기")}
           tabIndex={-1}
           aria-hidden="true"
           onClick={() => setMobile(false)}
@@ -422,7 +465,7 @@ function Workspace({
         inert={compactNav && !mobile}
         role={compactNav && mobile ? "dialog" : undefined}
         aria-modal={compactNav && mobile ? true : undefined}
-        aria-label="작업 공간 탐색"
+        aria-label={translate("작업 공간 탐색")}
       >
         <div className="sidebar-heading">
           <a
@@ -438,7 +481,7 @@ function Workspace({
           <button
             ref={closeNavRef}
             className="icon-button sidebar-close"
-            aria-label="메뉴 닫기"
+            aria-label={translate("메뉴 닫기")}
             onClick={() => setMobile(false)}
           >
             <X size={20} />
@@ -447,7 +490,7 @@ function Workspace({
         <button
           className="workspace-switch"
           onClick={() => go(isAdmin ? "settings" : "account")}
-          aria-label="작업 공간 설정"
+          aria-label={translate("작업 공간 설정")}
         >
           <span className="workspace-monogram">
             {session.organization.name.slice(0, 1)}
@@ -455,9 +498,9 @@ function Workspace({
           <b>{session.organization.name}</b>
           <Settings size={15} />
         </button>
-        <div className="nav-label">라이브러리</div>
-        <nav aria-label="아티팩트 탐색">
-          {nav.map((item) => (
+        <div className="nav-label">{translate("라이브러리")}</div>
+        <nav aria-label={translate("아티팩트 탐색")}>
+          {getNav().map((item) => (
             <button
               key={item.id}
               className={view === item.id ? "active" : ""}
@@ -470,9 +513,9 @@ function Workspace({
           ))}
         </nav>
         <div className="nav-separator" />
-        <div className="nav-label">작업 공간</div>
-        <nav aria-label="작업 공간 관리">
-          {management
+        <div className="nav-label">{translate("작업 공간")}</div>
+        <nav aria-label={translate("작업 공간 관리")}>
+          {getManagement()
             .filter((n) => isAdmin || ["agents", "account"].includes(n.id))
             .map((item) => (
               <button
@@ -487,9 +530,10 @@ function Workspace({
             ))}
         </nav>
         <div className="sidebar-bottom">
+          <LanguageSelector />
           <div className="capacity">
             <div>
-              <span>보관 용량</span>
+              <span>{translate("보관 용량")}</span>
               <span>{bytes(r.data?.usage.usedBytes || 0)}</span>
             </div>
             <div className="meter">
@@ -499,7 +543,11 @@ function Workspace({
                 }}
               />
             </div>
-            <small>{bytes(r.data?.usage.quotaBytes || 0)} 한도</small>
+            <small>
+              {translate("한도: {p0}", {
+                p0: bytes(r.data?.usage.quotaBytes || 0),
+              })}
+            </small>
           </div>
           <div className="sidebar-user">
             <span className="user-monogram">
@@ -507,25 +555,29 @@ function Workspace({
             </span>
             <span>
               <b>{session.user.name}</b>
-              <small>{isAdmin ? "관리자" : "구성원"}</small>
+              <small>
+                {isAdmin ? translate("관리자") : translate("구성원")}
+              </small>
             </span>
             <button
               className="icon-button"
-              title="로그아웃"
-              aria-label="로그아웃"
+              title={translate("로그아웃")}
+              aria-label={translate("로그아웃")}
               onClick={() => void onLogout().catch(setError)}
             >
               <LogOut size={17} />
             </button>
           </div>
-          <span className="local-status">Folio · 자체 호스팅</span>
+          <span className="local-status">
+            {translate("Folio · 자체 호스팅")}
+          </span>
         </div>
       </aside>
       <div className="main-shell" inert={compactNav && mobile}>
         <header className="mobile-header">
           <button
             className="icon-button"
-            aria-label="메뉴 열기"
+            aria-label={translate("메뉴 열기")}
             aria-expanded={mobile}
             aria-controls="workspace-navigation"
             onClick={() => setMobile(true)}
@@ -535,7 +587,7 @@ function Workspace({
           <Brand />
           <button
             className="icon-button"
-            aria-label="새 아티팩트"
+            aria-label={translate("새 아티팩트")}
             onClick={() => setUpload(true)}
           >
             <Plus size={21} />
@@ -544,11 +596,16 @@ function Workspace({
         <div className="workspace-topbar">
           <span>{session.organization.name}</span>
           <span className="breadcrumb-divider">/</span>
-          <b>{[...nav, ...management].find((n) => n.id === view)?.label}</b>
+          <b>
+            {
+              [...getNav(), ...getManagement()].find((n) => n.id === view)
+                ?.label
+            }
+          </b>
           <button
             className="topbar-account"
             onClick={() => go("account")}
-            aria-label="내 계정 열기"
+            aria-label={translate("내 계정 열기")}
           >
             {session.user.name.slice(0, 1)}
           </button>
@@ -566,8 +623,10 @@ function Workspace({
                         className="library-total"
                         aria-label={
                           r.loading
-                            ? "불러오는 중"
-                            : `${artifacts.length}개 아티팩트`
+                            ? translate("불러오는 중")
+                            : translate("{p0}개 아티팩트", {
+                                p0: artifacts.length,
+                              })
                         }
                       >
                         {r.loading ? "…" : artifacts.length}
@@ -575,19 +634,28 @@ function Workspace({
                     </div>
                     <p>
                       {view === "archive"
-                        ? "보관한 아티팩트는 자동 정리에서 제외합니다."
+                        ? translate(
+                            "보관한 아티팩트는 자동 정리에서 제외합니다.",
+                          )
                         : view === "mine"
-                          ? "보고서부터 작은 웹앱까지, 내가 만든 아티팩트를 모아보세요."
+                          ? translate(
+                              "보고서부터 작은 웹앱까지, 내가 만든 아티팩트를 모아보세요.",
+                            )
                           : view === "shared"
-                            ? "조직 전체 또는 나에게 공유된 아티팩트를 볼 수 있습니다."
-                            : "문서, 웹앱, 프로토타입. 팀과 에이전트가 만든 결과물을 관리하세요."}
+                            ? translate(
+                                "조직 전체 또는 나에게 공유된 아티팩트를 볼 수 있습니다.",
+                              )
+                            : translate(
+                                "문서, 웹앱, 프로토타입. 팀과 에이전트가 만든 결과물을 관리하세요.",
+                              )}
                     </p>
                   </div>
                   <button
                     className="button primary"
                     onClick={() => setUpload(true)}
                   >
-                    <Plus size={17} />새 아티팩트
+                    <Plus size={17} />
+                    {translate("새 아티팩트")}
                   </button>
                 </header>
                 <div className="library-toolbar">
@@ -596,26 +664,31 @@ function Workspace({
                       <Search size={16} />
                       <input
                         ref={searchRef}
-                        aria-label="아티팩트 검색"
+                        aria-label={translate("아티팩트 검색")}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="아티팩트 검색…"
+                        placeholder={translate("아티팩트 검색…")}
                       />
                       <kbd>⌘K</kbd>
                     </div>
                     <select
                       className="sort-select"
-                      aria-label="정렬"
+                      aria-label={translate("정렬")}
                       value={sort}
                       onChange={(e) => setSort(e.target.value)}
                     >
-                      <option value="updated">최근 수정순</option>
-                      <option value="title">제목순</option>
+                      <option value="updated">
+                        {translate("최근 수정순")}
+                      </option>
+                      <option value="title">{translate("제목순")}</option>
                     </select>
-                    <div className="view-toggle" aria-label="보기 방식">
+                    <div
+                      className="view-toggle"
+                      aria-label={translate("보기 방식")}
+                    >
                       <button
                         className={layout === "grid" ? "active" : ""}
-                        aria-label="그리드 보기"
+                        aria-label={translate("그리드 보기")}
                         aria-pressed={layout === "grid"}
                         onClick={() => setLayout("grid")}
                       >
@@ -623,7 +696,7 @@ function Workspace({
                       </button>
                       <button
                         className={layout === "list" ? "active" : ""}
-                        aria-label="목록 보기"
+                        aria-label={translate("목록 보기")}
                         aria-pressed={layout === "list"}
                         onClick={() => setLayout("list")}
                       >
@@ -635,7 +708,10 @@ function Workspace({
               </div>
               <ErrorBox error={r.error} />
               {r.loading && !r.data ? (
-                <div className="artifact-grid" aria-label="불러오는 중">
+                <div
+                  className="artifact-grid"
+                  aria-label={translate("불러오는 중")}
+                >
                   {[0, 1, 2].map((i) => (
                     <div className="card-skeleton" key={i} />
                   ))}
@@ -644,14 +720,16 @@ function Workspace({
                 query ? (
                   <Empty
                     icon={<Search size={30} />}
-                    heading="검색 결과가 없습니다"
-                    description="다른 제목이나 설명으로 검색해 보세요."
+                    heading={translate("검색 결과가 없습니다")}
+                    description={translate(
+                      "다른 제목이나 설명으로 검색해 보세요.",
+                    )}
                     action={
                       <button
                         className="button secondary"
                         onClick={() => setQuery("")}
                       >
-                        검색 지우기
+                        {translate("검색 지우기")}
                       </button>
                     }
                   />
@@ -675,12 +753,22 @@ function Workspace({
                 </>
               )}
             </>
+          ) : view === "collections" ? (
+            <CollectionsView
+              user={session.user}
+              onOpen={setSelected}
+              onShare={setShare}
+            />
+          ) : view === "trash" ? (
+            <TrashView onChange={() => changed()} />
           ) : view === "account" ? (
             <AccountPage session={session} onSession={onSession} />
           ) : view === "agents" ? (
             <AgentsPage />
           ) : isAdmin ? (
-            view === "members" ? (
+            view === "backups" ? (
+              <BackupSettings />
+            ) : view === "members" ? (
               <MembersPage self={session.user} />
             ) : view === "storage" ? (
               <StoragePage />
@@ -701,8 +789,8 @@ function Workspace({
           ) : (
             <Empty
               icon={<ShieldCheck size={30} />}
-              heading="관리자만 볼 수 있습니다"
-              description="계정과 설치 설정은 관리자가 관리합니다."
+              heading={translate("관리자만 볼 수 있습니다")}
+              description={translate("계정과 설치 설정은 관리자가 관리합니다.")}
             />
           )}
         </main>
@@ -710,10 +798,10 @@ function Workspace({
       {toast && (
         <div className="toast" role="status">
           <ShieldCheck size={17} />
-          {toast}
+          {translate(toast)}
           <button
             className="icon-button"
-            aria-label="알림 닫기"
+            aria-label={translate("알림 닫기")}
             onClick={() => setToast("")}
           >
             <X size={15} />
@@ -723,6 +811,7 @@ function Workspace({
       {selected && !share && (
         <DetailPanel
           artifact={selected}
+          user={session.user}
           canManage={canManage(selected)}
           onClose={closeSelected}
           onShare={() => {
@@ -741,7 +830,7 @@ function Workspace({
           artifact={share}
           canManage={canManage(share)}
           onClose={closeShare}
-          onSaved={() => changed("공유 설정을 저장했습니다.")}
+          onSaved={() => changed(translate("공유 설정을 저장했습니다."))}
         />
       )}
       {upload && (
@@ -751,8 +840,8 @@ function Workspace({
           onSaved={() => {
             changed(
               upload === true
-                ? "새 아티팩트를 게시했습니다."
-                : "새 버전을 게시했습니다.",
+                ? translate("새 아티팩트를 게시했습니다.")
+                : translate("새 버전을 게시했습니다."),
             );
             go("mine");
           }}

@@ -86,6 +86,8 @@ func run(ctx context.Context, args []string) error {
 	artifact := f.String("artifact", "", "Existing artifact ID to update")
 	baseVersion := f.String("base-version", "", "Current version ID required for update")
 	message := f.String("message", "", "Revision note")
+	draft := f.Bool("draft", false, "Publish a review draft without changing the official link")
+	tags := f.String("tags", "", "Comma-separated tags")
 	view := f.String("view", "", "mine, shared, archive, all")
 	query := f.String("query", "", "Search text")
 	sort := f.String("sort", "updated", "updated or title")
@@ -148,7 +150,7 @@ func run(ctx context.Context, args []string) error {
 		if f.NArg() != 1 {
 			return errors.New("usage: folio publish [flags] PATH (flags before path)")
 		}
-		result, e = c.Publish(ctx, agent.PublishInput{Path: f.Arg(0), Title: *title, Description: *description, Slug: *slug, Visibility: *visibility, MemberIDs: split(*members), ExpiresAt: *expires, ArtifactID: *artifact, BaseVersionID: *baseVersion, Message: *message})
+		result, e = c.Publish(ctx, agent.PublishInput{Path: f.Arg(0), Title: *title, Description: *description, Slug: *slug, Visibility: *visibility, MemberIDs: split(*members), ExpiresAt: *expires, ArtifactID: *artifact, BaseVersionID: *baseVersion, Message: *message, Draft: *draft, Tags: split(*tags)})
 	case "list":
 		q := url.Values{"view": {*view}, "q": {*query}, "sort": {*sort}}
 		result, e = c.JSON(ctx, "GET", "/api/artifacts?"+q.Encode(), nil)
@@ -196,7 +198,7 @@ func usage() {
   folio serve [--data-dir ./data] [--listen 127.0.0.1:4310]
   folio login --url http://folio.localhost:4310 --token-stdin
   folio publish --title "My artifact" ./site
-  folio publish --artifact ID --base-version VERSION ./site
+  folio publish --artifact ID --base-version VERSION --draft ./site
   folio list [--view mine|shared|archive] [--query text]
   folio inspect ID
   folio share --visibility private|organization|selected|public [--members ID,ID] ID

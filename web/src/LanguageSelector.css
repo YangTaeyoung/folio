@@ -1,0 +1,39 @@
+.language-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted, #626976);
+  min-width: 0;
+  max-width: 100%;
+}
+.language-selector select {
+  width: auto;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 22px 6px 7px;
+  font-size: 12px;
+  background-color: transparent;
+  border: 1px solid var(--line, #e2e4e9);
+  border-radius: 7px;
+  color: var(--ink, #18191c);
+  cursor: pointer;
+}
+.auth-header .language-selector {
+  margin-left: auto;
+}
+.sidebar-bottom > .language-selector {
+  align-self: flex-start;
+  margin-bottom: 8px;
+}
+:lang(fr) .sidebar nav button {
+  white-space: normal;
+  text-align: left;
+}
+:lang(fr) .toolbar {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .language-selector select {
+    font-size: 16px;
+  }
+}

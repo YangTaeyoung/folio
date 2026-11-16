@@ -1,3 +1,4 @@
+import { t as translate, useLocale } from "./i18n";
 import { useEffect, useState } from "react";
 import {
   Archive,
@@ -78,6 +79,7 @@ export function PageHeading({
   description: string;
   action?: React.ReactNode;
 }) {
+  useLocale();
   return (
     <header className="page-heading">
       <div>
@@ -90,6 +92,7 @@ export function PageHeading({
 }
 
 export function MembersPage({ self }: { self: User }) {
+  useLocale();
   const r = useResource<{ members: User[] }>("/api/members");
   const providers = useResource<{ google: { enabled: boolean } }>(
     "/api/auth/providers",
@@ -109,12 +112,14 @@ export function MembersPage({ self }: { self: User }) {
   return (
     <div className="admin-surface admin-members">
       <PageHeading
-        title="구성원"
-        description="구성원 계정을 만들고 조직의 접근 권한을 관리합니다."
+        title={translate("구성원")}
+        description={translate(
+          "구성원 계정을 만들고 조직의 접근 권한을 관리합니다.",
+        )}
         action={
           <button className="button primary" onClick={() => setShow(true)}>
             <Plus size={17} />
-            구성원 추가
+            {translate("구성원 추가")}
           </button>
         }
       />
@@ -124,17 +129,18 @@ export function MembersPage({ self }: { self: User }) {
         <div className="secret-box">
           <KeyRound size={21} />
           <div>
-            <b>임시 비밀번호가 생성되었습니다.</b>
+            <b>{translate("임시 비밀번호가 생성되었습니다.")}</b>
             <p>
-              이 비밀번호는 다시 표시하지 않습니다. 구성원은 첫 로그인 시
-              비밀번호를 변경합니다.
+              {translate(
+                "이 비밀번호는 다시 표시하지 않습니다. 구성원은 첫 로그인 시 비밀번호를 변경합니다.",
+              )}
             </p>
             <code>{temporary}</code>
           </div>
           <CopyButton text={temporary} />
           <button
             className="icon-button"
-            aria-label="비밀번호 표시 닫기"
+            aria-label={translate("비밀번호 표시 닫기")}
             onClick={() => setTemporary("")}
           >
             ×
@@ -143,25 +149,32 @@ export function MembersPage({ self }: { self: User }) {
       )}
       <section className="panel members-panel">
         <div className="section-title">
-          <span className="admin-result-count">{members.length}명</span>
-          <span className="subtle">초대 메일 없이 계정을 직접 생성합니다.</span>
+          <span className="admin-result-count">
+            {translate("{p0}명", { p0: members.length })}
+          </span>
+          <span className="subtle">
+            {translate("초대 메일 없이 계정을 직접 생성합니다.")}
+          </span>
         </div>
         {r.loading ? (
           <div className="loading-row">
             <Spinner />
-            구성원 불러오는 중
+            {translate("구성원 불러오는 중")}
           </div>
         ) : (
           <div className="table-scroll">
-            <table className="members-table" aria-label="조직 구성원">
+            <table
+              className="members-table"
+              aria-label={translate("조직 구성원")}
+            >
               <thead>
                 <tr>
-                  <th scope="col">구성원</th>
-                  <th scope="col">역할</th>
-                  <th scope="col">상태</th>
-                  <th scope="col">가입일</th>
+                  <th scope="col">{translate("구성원")}</th>
+                  <th scope="col">{translate("역할")}</th>
+                  <th scope="col">{translate("상태")}</th>
+                  <th scope="col">{translate("가입일")}</th>
                   <th scope="col">
-                    <span className="sr-only">관리</span>
+                    <span className="sr-only">{translate("관리")}</span>
                   </th>
                 </tr>
               </thead>
@@ -175,16 +188,18 @@ export function MembersPage({ self }: { self: User }) {
                           <b>
                             {u.name}
                             {u.id === self.id && (
-                              <small className="you-label">나</small>
+                              <small className="you-label">
+                                {translate("나")}
+                              </small>
                             )}
                           </b>
                           <small>{u.email}</small>
                         </span>
                       </div>
                     </td>
-                    <td data-label="역할">
+                    <td data-label={translate("역할")}>
                       <select
-                        aria-label={`${u.name} 역할`}
+                        aria-label={translate("{p0} 역할", { p0: u.name })}
                         value={u.role}
                         disabled={a.busy || u.id === self.id}
                         onChange={(e) =>
@@ -197,20 +212,20 @@ export function MembersPage({ self }: { self: User }) {
                           })
                         }
                       >
-                        <option value="member">구성원</option>
-                        <option value="admin">관리자</option>
+                        <option value="member">{translate("구성원")}</option>
+                        <option value="admin">{translate("관리자")}</option>
                       </select>
                     </td>
-                    <td data-label="상태">
+                    <td data-label={translate("상태")}>
                       <span className={`badge ${u.disabled ? "muted" : ""}`}>
                         {u.disabled
-                          ? "일시 중지"
+                          ? translate("일시 중지")
                           : u.mustChangePassword
-                            ? "첫 로그인 대기"
-                            : "활성"}
+                            ? translate("첫 로그인 대기")
+                            : translate("활성")}
                       </span>
                     </td>
-                    <td className="subtle" data-label="가입일">
+                    <td className="subtle" data-label={translate("가입일")}>
                       {date(u.createdAt)}
                     </td>
                     <td>
@@ -218,9 +233,11 @@ export function MembersPage({ self }: { self: User }) {
                         {u.loginMethod === "google" ? (
                           <span
                             className="subtle"
-                            title="Google에서 비밀번호를 관리하는 계정입니다."
+                            title={translate(
+                              "Google에서 비밀번호를 관리하는 계정입니다.",
+                            )}
                           >
-                            Google 로그인
+                            {translate("Google 로그인")}
                           </span>
                         ) : (
                           <button
@@ -228,13 +245,13 @@ export function MembersPage({ self }: { self: User }) {
                             disabled={a.busy || u.id === self.id}
                             title={
                               u.id === self.id
-                                ? "내 계정에서 비밀번호를 변경하세요"
+                                ? translate("내 계정에서 비밀번호를 변경하세요")
                                 : undefined
                             }
                             onClick={() => setConfirm(u)}
                           >
                             <KeyRound size={14} />
-                            초기화
+                            {translate("초기화")}
                           </button>
                         )}
                         {u.id !== self.id && (
@@ -251,7 +268,9 @@ export function MembersPage({ self }: { self: User }) {
                               })
                             }
                           >
-                            {u.disabled ? "다시 활성화" : "중지"}
+                            {u.disabled
+                              ? translate("다시 활성화")
+                              : translate("중지")}
                           </button>
                         )}
                       </div>
@@ -264,7 +283,10 @@ export function MembersPage({ self }: { self: User }) {
         )}
       </section>
       {show && (
-        <Modal title="구성원 계정 만들기" onClose={() => setShow(false)}>
+        <Modal
+          title={translate("구성원 계정 만들기")}
+          onClose={() => setShow(false)}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -276,7 +298,10 @@ export function MembersPage({ self }: { self: User }) {
                 setTemporary(result.temporaryPassword || "");
                 setCreated(
                   form.loginMethod === "google"
-                    ? `${form.name}님의 Google 로그인 계정을 만들었습니다. 등록한 이메일의 Google 계정으로 로그인할 수 있습니다.`
+                    ? translate(
+                        "{p0}님의 Google 로그인 계정을 만들었습니다. 등록한 이메일의 Google 계정으로 로그인할 수 있습니다.",
+                        { p0: form.name },
+                      )
                     : "",
                 );
                 setShow(false);
@@ -291,14 +316,14 @@ export function MembersPage({ self }: { self: User }) {
             }}
           >
             <div className="modal-body">
-              <Field label="이름">
+              <Field label={translate("이름")}>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </Field>
-              <Field label="이메일">
+              <Field label={translate("이메일")}>
                 <input
                   required
                   type="email"
@@ -306,42 +331,49 @@ export function MembersPage({ self }: { self: User }) {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </Field>
-              <Field label="역할">
+              <Field label={translate("역할")}>
                 <select
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
                 >
-                  <option value="member">구성원</option>
-                  <option value="admin">관리자</option>
+                  <option value="member">{translate("구성원")}</option>
+                  <option value="admin">{translate("관리자")}</option>
                 </select>
               </Field>
               {providers.data?.google.enabled && (
-                <Field label="로그인 방법">
+                <Field label={translate("로그인 방법")}>
                   <select
                     value={form.loginMethod}
                     onChange={(e) =>
                       setForm({ ...form, loginMethod: e.target.value })
                     }
                   >
-                    <option value="password">이메일과 비밀번호</option>
-                    <option value="google">Google 계정</option>
+                    <option value="password">
+                      {translate("이메일과 비밀번호")}
+                    </option>
+                    <option value="google">{translate("Google 계정")}</option>
                   </select>
                 </Field>
               )}
               <Notice>
                 {form.loginMethod === "google"
-                  ? "등록한 이메일과 일치하는 Google 계정으로만 로그인합니다. 임시 비밀번호는 생성하지 않습니다. 허용 도메인을 설정했다면 해당 Google Workspace 계정이어야 합니다."
-                  : "임시 비밀번호를 생성합니다. 계정 생성 후 안전한 방법으로 전달해 주세요."}
+                  ? translate(
+                      "등록한 이메일과 일치하는 Google 계정으로만 로그인합니다. 임시 비밀번호는 생성하지 않습니다. 허용 도메인을 설정했다면 해당 Google Workspace 계정이어야 합니다.",
+                    )
+                  : translate(
+                      "임시 비밀번호를 생성합니다. 계정 생성 후 안전한 방법으로 전달해 주세요.",
+                    )}
               </Notice>
               {providers.loading && (
                 <p className="subtle">
-                  Google 로그인 사용 여부를 확인하고 있습니다.
+                  {translate("Google 로그인 사용 여부를 확인하고 있습니다.")}
                 </p>
               )}
               {!!providers.error && (
                 <p className="subtle">
-                  Google 로그인 설정을 불러오지 못했습니다. 비밀번호 계정을 만들
-                  수 있습니다.
+                  {translate(
+                    "Google 로그인 설정을 불러오지 못했습니다. 비밀번호 계정을 만들 수 있습니다.",
+                  )}
                 </p>
               )}
               <ErrorBox error={a.error} />
@@ -352,21 +384,26 @@ export function MembersPage({ self }: { self: User }) {
                 className="button secondary"
                 onClick={() => setShow(false)}
               >
-                취소
+                {translate("취소")}
               </button>
               <button className="button primary" disabled={a.busy}>
-                {a.busy ? <Spinner /> : "계정 만들기"}
+                {a.busy ? <Spinner /> : translate("계정 만들기")}
               </button>
             </footer>
           </form>
         </Modal>
       )}
       {confirm && (
-        <Modal title="비밀번호 초기화" onClose={() => setConfirm(null)}>
+        <Modal
+          title={translate("비밀번호 초기화")}
+          onClose={() => setConfirm(null)}
+        >
           <div className="modal-body">
             <p>
-              {confirm.name}님의 비밀번호를 초기화할까요? 기존 로그인과 API
-              토큰이 해제됩니다.
+              {translate(
+                "{p0}님의 비밀번호를 초기화할까요? 기존 로그인과 API 토큰이 해제됩니다.",
+                { p0: confirm.name },
+              )}
             </p>
             <ErrorBox error={a.error} />
           </div>
@@ -375,7 +412,7 @@ export function MembersPage({ self }: { self: User }) {
               className="button secondary"
               onClick={() => setConfirm(null)}
             >
-              취소
+              {translate("취소")}
             </button>
             <button
               className="button primary"
@@ -392,7 +429,7 @@ export function MembersPage({ self }: { self: User }) {
                 })
               }
             >
-              초기화
+              {translate("초기화")}
             </button>
           </footer>
         </Modal>
@@ -401,37 +438,42 @@ export function MembersPage({ self }: { self: User }) {
   );
 }
 
-const presets = [
+const getPresets = () => [
   {
     id: "local",
-    name: "로컬 저장소",
+    name: translate("로컬 저장소"),
     provider: "local",
-    description: "서버의 디스크에 보관",
+    description: translate("서버의 디스크에 보관"),
   },
-  { id: "aws", name: "Amazon S3", provider: "s3", description: "AWS S3 버킷" },
+  {
+    id: "aws",
+    name: "Amazon S3",
+    provider: "s3",
+    description: translate("AWS S3 버킷"),
+  },
   {
     id: "r2",
     name: "Cloudflare R2",
     provider: "s3",
-    description: "S3 호환 객체 저장소",
+    description: translate("S3 호환 객체 저장소"),
   },
   {
     id: "minio",
-    name: "MinIO / S3 호환",
+    name: translate("MinIO / S3 호환"),
     provider: "s3",
-    description: "사내 또는 호환 저장소",
+    description: translate("사내 또는 호환 저장소"),
   },
   {
     id: "gcs",
     name: "Google Cloud Storage",
     provider: "gcs",
-    description: "Google Cloud 버킷",
+    description: translate("Google Cloud 버킷"),
   },
   {
     id: "azure",
     name: "Azure Blob Storage",
     provider: "azure",
-    description: "Azure 스토리지 컨테이너",
+    description: translate("Azure 스토리지 컨테이너"),
   },
 ];
 const defaultBackend = {
@@ -450,6 +492,7 @@ const defaultBackend = {
   accountKey: "",
 };
 export function StoragePage() {
+  useLocale();
   const r = useResource<{ backends: Backend[] }>("/api/storage");
   const settings = useResource<{ policy: Policy }>("/api/admin/settings");
   const usage = useResource<{
@@ -479,7 +522,7 @@ export function StoragePage() {
   }, [settings.data]);
   function select(id: string) {
     setPreset(id);
-    const p = presets.find((x) => x.id === id)!;
+    const p = getPresets().find((x) => x.id === id)!;
     setForm({
       ...defaultBackend,
       name: p.name,
@@ -491,8 +534,10 @@ export function StoragePage() {
   return (
     <div className="admin-surface admin-storage">
       <PageHeading
-        title="저장소와 보관"
-        description="데이터는 선택한 저장소에, 보관 정책은 팀의 기준에 맞게."
+        title={translate("저장소와 보관")}
+        description={translate(
+          "데이터는 선택한 저장소에, 보관 정책은 팀의 기준에 맞게.",
+        )}
         action={
           <button
             className="button primary"
@@ -502,7 +547,7 @@ export function StoragePage() {
             }}
           >
             <Plus size={17} />
-            저장소 연결
+            {translate("저장소 연결")}
           </button>
         }
       />
@@ -513,7 +558,7 @@ export function StoragePage() {
           <HardDrive size={28} />
         </div>
         <div>
-          <span className="storage-caption">사용 중인 용량</span>
+          <span className="storage-caption">{translate("사용 중인 용량")}</span>
           <h2>
             {bytes(usage.data?.usage.usedBytes || 0)}{" "}
             <span>/ {bytes(p?.quotaBytes || 0)}</span>
@@ -526,23 +571,25 @@ export function StoragePage() {
             />
           </div>
           <p>
-            아카이브와 이전 버전을 포함한 보관 용량입니다.
+            {translate("아카이브와 이전 버전을 포함한 보관 용량입니다.")}
             {usage.data?.usage.pendingDeletionBytes
-              ? ` 실제 삭제 대기 ${bytes(usage.data.usage.pendingDeletionBytes)}`
+              ? translate(" 실제 삭제 대기 {p0}", {
+                  p0: bytes(usage.data.usage.pendingDeletionBytes),
+                })
               : ""}
           </p>
         </div>
         <span className="badge">
           {p?.overflowPolicy === "delete_oldest"
-            ? "오래된 항목 자동 정리"
-            : "한도 초과 시 게시 중지"}
+            ? translate("오래된 항목 자동 정리")
+            : translate("한도 초과 시 게시 중지")}
         </span>
       </section>
       <section className="panel">
         <div className="section-title">
-          <h2>연결된 저장소</h2>
+          <h2>{translate("연결된 저장소")}</h2>
           <span className="subtle">
-            기본 저장소 변경은 새로 게시하는 버전부터 적용됩니다.
+            {translate("기본 저장소 변경은 새로 게시하는 버전부터 적용됩니다.")}
           </span>
         </div>
         {r.loading ? (
@@ -563,12 +610,14 @@ export function StoragePage() {
                 <b>{b.name}</b>
                 <small>
                   {b.provider === "local"
-                    ? "이 서버의 디스크"
+                    ? translate("이 서버의 디스크")
                     : `${b.provider.toUpperCase()} · ${b.bucket}`}
                   {b.endpoint ? ` · ${b.endpoint}` : ""}
                 </small>
               </div>
-              {b.isDefault && <span className="badge">기본 저장소</span>}
+              {b.isDefault && (
+                <span className="badge">{translate("기본 저장소")}</span>
+              )}
               <button
                 className="button secondary compact"
                 disabled={a.busy}
@@ -580,13 +629,15 @@ export function StoragePage() {
                     );
                     if (!result.ok) throw new Error(result.message);
                     setFeedback(
-                      `${b.name}: 쓰기·읽기·삭제 테스트를 통과했습니다.`,
+                      translate("{p0}: 쓰기·읽기·삭제 테스트를 통과했습니다.", {
+                        p0: b.name,
+                      }),
                     );
                   })
                 }
               >
                 <RefreshCw size={14} />
-                연결 테스트
+                {translate("연결 테스트")}
               </button>
               {!b.isDefault && (
                 <>
@@ -600,11 +651,11 @@ export function StoragePage() {
                       })
                     }
                   >
-                    기본으로
+                    {translate("기본으로")}
                   </button>
                   <button
                     className="icon-button danger-text"
-                    aria-label={`${b.name} 연결 제거`}
+                    aria-label={translate("{p0} 연결 제거", { p0: b.name })}
                     disabled={a.busy}
                     onClick={() =>
                       void a.run(async () => {
@@ -624,9 +675,9 @@ export function StoragePage() {
       {p && (
         <section className="panel admin-section admin-storage-policy">
           <div className="section-title">
-            <h2>용량과 보관 정책</h2>
+            <h2>{translate("용량과 보관 정책")}</h2>
             <span className="subtle">
-              자동 정리에서 아카이브는 항상 제외합니다.
+              {translate("자동 정리에서 아카이브는 항상 제외합니다.")}
             </span>
           </div>
           <form
@@ -636,12 +687,12 @@ export function StoragePage() {
                 await api("/api/admin/settings", json("PATCH", { policy: p }));
                 settings.reload();
                 usage.reload();
-                setFeedback("보관 정책을 저장했습니다.");
+                setFeedback(translate("보관 정책을 저장했습니다."));
               });
             }}
           >
             <div className="form-grid">
-              <Field label="전체 용량 한도 (MB)">
+              <Field label={translate("전체 용량 한도 (MB)")}>
                 <input
                   type="number"
                   min={1}
@@ -655,7 +706,7 @@ export function StoragePage() {
                   }
                 />
               </Field>
-              <Field label="한 번에 올릴 수 있는 용량 (MB)">
+              <Field label={translate("한 번에 올릴 수 있는 용량 (MB)")}>
                 <input
                   type="number"
                   min={1}
@@ -670,8 +721,8 @@ export function StoragePage() {
                 />
               </Field>
               <Field
-                label="보관 기간 (일)"
-                hint="0이면 기간에 따른 자동 삭제를 하지 않습니다."
+                label={translate("보관 기간 (일)")}
+                hint={translate("0이면 기간에 따른 자동 삭제를 하지 않습니다.")}
               >
                 <input
                   type="number"
@@ -683,7 +734,7 @@ export function StoragePage() {
                   }
                 />
               </Field>
-              <Field label="용량을 초과하면">
+              <Field label={translate("용량을 초과하면")}>
                 <select
                   value={p.overflowPolicy}
                   onChange={(e) =>
@@ -694,17 +745,20 @@ export function StoragePage() {
                     })
                   }
                 >
-                  <option value="reject">새 게시를 중지하고 알려주기</option>
+                  <option value="reject">
+                    {translate("새 게시를 중지하고 알려주기")}
+                  </option>
                   <option value="delete_oldest">
-                    오래된 아티팩트부터 자동 삭제
+                    {translate("오래된 아티팩트부터 자동 삭제")}
                   </option>
                 </select>
               </Field>
             </div>
             {p.overflowPolicy === "delete_oldest" && (
               <div className="warning-note">
-                새 게시에 필요한 공간을 확보하기 위해 오래된 아티팩트와 그
-                버전을 삭제합니다. 아카이브는 보존합니다.
+                {translate(
+                  "새 게시에 필요한 공간을 확보하기 위해 오래된 아티팩트와 그 버전을 삭제합니다. 아카이브는 보존합니다.",
+                )}
               </div>
             )}
             <div className="form-footer">
@@ -724,10 +778,10 @@ export function StoragePage() {
                 }
               >
                 <Archive size={16} />
-                정리 대상 미리보기
+                {translate("정리 대상 미리보기")}
               </button>
               <button className="button primary" disabled={a.busy}>
-                {a.busy ? <Spinner /> : "정책 저장"}
+                {a.busy ? <Spinner /> : translate("정책 저장")}
               </button>
             </div>
           </form>
@@ -735,14 +789,16 @@ export function StoragePage() {
       )}
       {cleanup && (
         <Modal
-          title="보관 정책에 따른 정리 대상"
+          title={translate("보관 정책에 따른 정리 대상")}
           wide
           onClose={() => setCleanup(null)}
         >
           <div className="modal-body">
             <p>
-              {cleanup.candidates.length}개 아티팩트 · 예상{" "}
-              {bytes(cleanup.freedBytes)} 정리
+              {translate("{p0}개 아티팩트 · 예상 정리 용량 {p1}", {
+                p0: cleanup.candidates.length,
+                p1: bytes(cleanup.freedBytes),
+              })}
             </p>
             {cleanup.candidates.length ? (
               <ul className="cleanup-list">
@@ -756,10 +812,12 @@ export function StoragePage() {
                 ))}
               </ul>
             ) : (
-              <Notice>현재 정리할 대상이 없습니다.</Notice>
+              <Notice>{translate("현재 정리할 대상이 없습니다.")}</Notice>
             )}
             <p className="subtle">
-              삭제 후 복구할 수 없습니다. 아카이브한 자료는 포함되지 않습니다.
+              {translate(
+                "삭제 후 복구할 수 없습니다. 아카이브한 자료는 포함되지 않습니다.",
+              )}
             </p>
             <ErrorBox error={a.error} />
           </div>
@@ -768,7 +826,7 @@ export function StoragePage() {
               className="button secondary"
               onClick={() => setCleanup(null)}
             >
-              닫기
+              {translate("닫기")}
             </button>
             <button
               className="button danger"
@@ -782,18 +840,24 @@ export function StoragePage() {
                   setCleanup(null);
                   usage.reload();
                   setFeedback(
-                    `${result.candidates.length}개 아티팩트 정리를 요청했습니다.`,
+                    translate("{p0}개 아티팩트 정리를 요청했습니다.", {
+                      p0: result.candidates.length,
+                    }),
                   );
                 })
               }
             >
-              대상 영구 삭제
+              {translate("대상 영구 삭제")}
             </button>
           </footer>
         </Modal>
       )}
       {show && (
-        <Modal title="저장소 연결" wide onClose={() => setShow(false)}>
+        <Modal
+          title={translate("저장소 연결")}
+          wide
+          onClose={() => setShow(false)}
+        >
           <form
             className="admin-storage-form"
             onSubmit={(e) => {
@@ -804,22 +868,24 @@ export function StoragePage() {
                 setShow(false);
                 r.reload();
                 setFeedback(
-                  "저장소를 추가했습니다. 연결 테스트 후 기본 저장소로 지정해 주세요.",
+                  translate(
+                    "저장소를 추가했습니다. 연결 테스트 후 기본 저장소로 지정해 주세요.",
+                  ),
                 );
               });
             }}
           >
             <div className="modal-body">
-              <Field label="저장소 종류">
+              <Field label={translate("저장소 종류")}>
                 <select value={preset} onChange={(e) => select(e.target.value)}>
-                  {presets.map((x) => (
+                  {getPresets().map((x) => (
                     <option value={x.id} key={x.id}>
                       {x.name}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="연결 이름">
+              <Field label={translate("연결 이름")}>
                 <input
                   required
                   value={form.name}
@@ -830,7 +896,9 @@ export function StoragePage() {
                 <>
                   <Field
                     label={
-                      form.provider === "azure" ? "컨테이너 이름" : "버킷 이름"
+                      form.provider === "azure"
+                        ? translate("컨테이너 이름")
+                        : translate("버킷 이름")
                     }
                   >
                     <input
@@ -841,7 +909,7 @@ export function StoragePage() {
                       }
                     />
                   </Field>
-                  <Field label="객체 경로 접두사">
+                  <Field label={translate("객체 경로 접두사")}>
                     <input
                       value={form.prefix}
                       onChange={(e) =>
@@ -854,7 +922,7 @@ export function StoragePage() {
               {form.provider === "s3" && (
                 <>
                   <div className="form-grid">
-                    <Field label="리전">
+                    <Field label={translate("리전")}>
                       <input
                         value={form.region}
                         onChange={(e) =>
@@ -866,11 +934,15 @@ export function StoragePage() {
                       />
                     </Field>
                     <Field
-                      label="엔드포인트"
+                      label={translate("엔드포인트")}
                       hint={
                         preset === "aws"
-                          ? "AWS 기본 엔드포인트를 사용하려면 비워두세요."
-                          : "저장소 서비스에서 제공한 주소를 입력하세요."
+                          ? translate(
+                              "AWS 기본 엔드포인트를 사용하려면 비워두세요.",
+                            )
+                          : translate(
+                              "저장소 서비스에서 제공한 주소를 입력하세요.",
+                            )
                       }
                     >
                       <input
@@ -887,7 +959,7 @@ export function StoragePage() {
                       />
                     </Field>
                   </div>
-                  <Field label="액세스 키 ID">
+                  <Field label={translate("액세스 키 ID")}>
                     <input
                       value={form.accessKeyId}
                       onChange={(e) =>
@@ -896,7 +968,7 @@ export function StoragePage() {
                       autoComplete="off"
                     />
                   </Field>
-                  <Field label="시크릿 액세스 키">
+                  <Field label={translate("시크릿 액세스 키")}>
                     <input
                       type="password"
                       value={form.secretAccessKey}
@@ -906,7 +978,7 @@ export function StoragePage() {
                       autoComplete="new-password"
                     />
                   </Field>
-                  <Field label="세션 토큰 (선택)">
+                  <Field label={translate("세션 토큰 (선택)")}>
                     <input
                       type="password"
                       value={form.sessionToken}
@@ -917,15 +989,19 @@ export function StoragePage() {
                     />
                   </Field>
                   <p className="subtle">
-                    키를 비우면 서버에 구성된 기본 AWS 자격 증명을 사용합니다.
+                    {translate(
+                      "키를 비우면 서버에 구성된 기본 AWS 자격 증명을 사용합니다.",
+                    )}
                   </p>
                 </>
               )}
               {form.provider === "gcs" && (
                 <>
                   <Field
-                    label="서비스 계정 JSON"
-                    hint="비워두면 서버의 기본 Google 자격 증명을 사용합니다."
+                    label={translate("서비스 계정 JSON")}
+                    hint={translate(
+                      "비워두면 서버의 기본 Google 자격 증명을 사용합니다.",
+                    )}
                   >
                     <textarea
                       className="code-input"
@@ -942,7 +1018,7 @@ export function StoragePage() {
               )}
               {form.provider === "azure" && (
                 <>
-                  <Field label="연결 문자열 (선택)">
+                  <Field label={translate("연결 문자열 (선택)")}>
                     <input
                       type="password"
                       value={form.connectionString}
@@ -953,7 +1029,7 @@ export function StoragePage() {
                     />
                   </Field>
                   <div className="form-grid">
-                    <Field label="계정 이름">
+                    <Field label={translate("계정 이름")}>
                       <input
                         value={form.accountName}
                         onChange={(e) =>
@@ -961,7 +1037,7 @@ export function StoragePage() {
                         }
                       />
                     </Field>
-                    <Field label="계정 키">
+                    <Field label={translate("계정 키")}>
                       <input
                         type="password"
                         value={form.accountKey}
@@ -972,7 +1048,7 @@ export function StoragePage() {
                       />
                     </Field>
                   </div>
-                  <Field label="서비스 엔드포인트 (선택)">
+                  <Field label={translate("서비스 엔드포인트 (선택)")}>
                     <input
                       type="url"
                       value={form.endpoint}
@@ -984,7 +1060,9 @@ export function StoragePage() {
                 </>
               )}
               <Notice>
-                자격 증명은 서버에서 암호화해 저장하고 다시 표시하지 않습니다.
+                {translate(
+                  "자격 증명은 서버에서 암호화해 저장하고 다시 표시하지 않습니다.",
+                )}
               </Notice>
               <ErrorBox error={a.error} />
             </div>
@@ -994,10 +1072,10 @@ export function StoragePage() {
                 className="button secondary"
                 onClick={() => setShow(false)}
               >
-                취소
+                {translate("취소")}
               </button>
               <button className="button primary" disabled={a.busy}>
-                {a.busy ? <Spinner /> : "저장소 연결"}
+                {a.busy ? <Spinner /> : translate("저장소 연결")}
               </button>
             </footer>
           </form>
@@ -1008,6 +1086,7 @@ export function StoragePage() {
 }
 
 export function DomainsPage() {
+  useLocale();
   const r = useResource<{ domains: Domain[] }>("/api/domains");
   const providers = useResource<{
     providers: { id: string; supported: boolean; instructions?: string }[];
@@ -1053,7 +1132,7 @@ export function DomainsPage() {
           if (
             ["complete", "completed", "success", "connected"].includes(s.status)
           ) {
-            setFeedback("Cloudflare 로그인이 완료되었습니다.");
+            setFeedback(translate("Cloudflare 로그인이 완료되었습니다."));
             connector.reload();
           }
         })
@@ -1064,12 +1143,14 @@ export function DomainsPage() {
   return (
     <div className="admin-surface admin-domains">
       <PageHeading
-        title="도메인"
-        description="내부 도메인 또는 인터넷 주소를 아티팩트에 연결합니다."
+        title={translate("도메인")}
+        description={translate(
+          "내부 도메인 또는 인터넷 주소를 아티팩트에 연결합니다.",
+        )}
         action={
           <button className="button primary" onClick={() => setShow(true)}>
             <Plus size={17} />
-            도메인 연결
+            {translate("도메인 연결")}
           </button>
         }
       />
@@ -1077,9 +1158,9 @@ export function DomainsPage() {
       {feedback && <Notice>{feedback}</Notice>}
       <section className="panel">
         <div className="section-title">
-          <h2>연결된 도메인</h2>
+          <h2>{translate("연결된 도메인")}</h2>
           <span className="subtle">
-            주소가 공개되어도 아티팩트의 공유 권한은 유지됩니다.
+            {translate("주소가 공개되어도 아티팩트의 공유 권한은 유지됩니다.")}
           </span>
         </div>
         {r.loading ? (
@@ -1090,8 +1171,10 @@ export function DomainsPage() {
           <div className="domain-empty">
             <Globe size={26} />
             <div>
-              <h3>아직 연결된 도메인이 없습니다.</h3>
-              <p>도메인을 추가하면 필요한 DNS 레코드를 안내합니다.</p>
+              <h3>{translate("아직 연결된 도메인이 없습니다.")}</h3>
+              <p>
+                {translate("도메인을 추가하면 필요한 DNS 레코드를 안내합니다.")}
+              </p>
             </div>
           </div>
         ) : (
@@ -1103,7 +1186,7 @@ export function DomainsPage() {
                   <b>{d.hostname}</b>
                   <small>
                     {arts.data?.artifacts.find((x) => x.id === d.artifactId)
-                      ?.title || "아티팩트"}{" "}
+                      ?.title || translate("아티팩트")}{" "}
                     · {d.provider}
                   </small>
                 </div>
@@ -1111,18 +1194,18 @@ export function DomainsPage() {
                   className={`badge ${d.status === "verified" ? "" : "muted"}`}
                 >
                   {d.status === "verified"
-                    ? "연결 확인됨"
+                    ? translate("연결 확인됨")
                     : d.status === "error"
-                      ? "확인 필요"
-                      : "DNS 등록 대기"}
+                      ? translate("확인 필요")
+                      : translate("DNS 등록 대기")}
                 </span>
               </div>
               {d.records.length > 0 && (
                 <div className="dns-records">
                   <div className="dns-record header">
-                    <span>유형</span>
-                    <span>이름</span>
-                    <span>값</span>
+                    <span>{translate("유형")}</span>
+                    <span>{translate("이름")}</span>
+                    <span>{translate("값")}</span>
                     <span />
                   </div>
                   {d.records.map((record, i) => (
@@ -1149,14 +1232,16 @@ export function DomainsPage() {
                       r.reload();
                       setFeedback(
                         result.domain.status === "verified"
-                          ? `${d.hostname} 연결을 확인했습니다.`
-                          : "아직 DNS 등록을 확인하지 못했습니다.",
+                          ? translate("{p0} 연결을 확인했습니다.", {
+                              p0: d.hostname,
+                            })
+                          : translate("아직 DNS 등록을 확인하지 못했습니다."),
                       );
                     })
                   }
                 >
                   <RefreshCw size={14} />
-                  등록 확인
+                  {translate("등록 확인")}
                 </button>
                 {d.provider === "cloudflare" && (
                   <button
@@ -1173,13 +1258,15 @@ export function DomainsPage() {
                           r.reload();
                         }
                         setFeedback(
-                          "Cloudflare에 레코드를 등록했습니다. 등록 확인을 실행해 주세요.",
+                          translate(
+                            "Cloudflare에 레코드를 등록했습니다. 등록 확인을 실행해 주세요.",
+                          ),
                         );
                       })
                     }
                   >
                     <CloudUpload size={14} />
-                    DNS 자동 등록
+                    {translate("DNS 자동 등록")}
                   </button>
                 )}
                 {d.provider === "domainconnect" && (
@@ -1200,7 +1287,7 @@ export function DomainsPage() {
                       })
                     }
                   >
-                    DNS 서비스에서 승인
+                    {translate("DNS 서비스에서 승인")}
                   </button>
                 )}
                 <button
@@ -1213,7 +1300,7 @@ export function DomainsPage() {
                     })
                   }
                 >
-                  연결 해제
+                  {translate("연결 해제")}
                 </button>
               </div>
             </div>
@@ -1227,17 +1314,20 @@ export function DomainsPage() {
         <summary>
           <span className="admin-disclosure-title">
             <Cloud size={18} />
-            Cloudflare 연결
+            {translate("Cloudflare 연결")}
           </span>
-          <span className="subtle">DNS 자동 등록을 사용할 때 연결합니다.</span>
+          <span className="subtle">
+            {translate("DNS 자동 등록을 사용할 때 연결합니다.")}
+          </span>
         </summary>
         <div className="admin-disclosure-body">
           <div className="integration-columns">
             <div>
-              <h3>계정으로 로그인</h3>
+              <h3>{translate("계정으로 로그인")}</h3>
               <p className="subtle">
-                공식 cloudflared 로그인으로 계정을 연결합니다. 서버에
-                cloudflared가 설치되어 있어야 합니다.
+                {translate(
+                  "공식 cloudflared 로그인으로 계정을 연결합니다. 서버에 cloudflared가 설치되어 있어야 합니다.",
+                )}
               </p>
               <button
                 className="button secondary"
@@ -1252,13 +1342,15 @@ export function DomainsPage() {
                     }>("/api/admin/dns/cloudflare/login", json("POST"));
                     if (result.error) throw new Error(result.error);
                     if (result.status === "complete")
-                      setFeedback("Cloudflare 로그인이 완료되었습니다.");
+                      setFeedback(
+                        translate("Cloudflare 로그인이 완료되었습니다."),
+                      );
                     setLogin(result);
                   })
                 }
               >
                 <ExternalLink size={16} />
-                Cloudflare 로그인 시작
+                {translate("Cloudflare 로그인 시작")}
               </button>
             </div>
             <form
@@ -1273,16 +1365,20 @@ export function DomainsPage() {
                     json("POST", { apiToken: token }),
                   );
                   if (!result.connected)
-                    throw new Error("계정 연결을 확인하지 못했습니다.");
+                    throw new Error(
+                      translate("계정 연결을 확인하지 못했습니다."),
+                    );
                   setToken("");
                   setFeedback(
-                    `Cloudflare 연결 완료 · ${result.zones.length}개 영역 확인`,
+                    translate("Cloudflare 연결 완료 · {p0}개 영역 확인", {
+                      p0: result.zones.length,
+                    }),
                   );
                 });
               }}
             >
-              <h3>API 토큰으로 연결</h3>
-              <Field label="DNS 편집 권한이 있는 API 토큰">
+              <h3>{translate("API 토큰으로 연결")}</h3>
+              <Field label={translate("DNS 편집 권한이 있는 API 토큰")}>
                 <input
                   required
                   type="password"
@@ -1292,7 +1388,7 @@ export function DomainsPage() {
                 />
               </Field>
               <button className="button secondary" disabled={a.busy || !token}>
-                토큰 연결
+                {translate("토큰 연결")}
               </button>
             </form>
           </div>
@@ -1307,15 +1403,15 @@ export function DomainsPage() {
                   rel="noreferrer"
                 >
                   {login.id === "domainconnect"
-                    ? "DNS 승인 페이지 열기"
-                    : "Cloudflare 열기"}
+                    ? translate("DNS 승인 페이지 열기")
+                    : translate("Cloudflare 열기")}
                   <ArrowUpRight size={14} />
                 </a>
               )}
               <p className="subtle">
                 {login.status === "complete"
-                  ? "Cloudflare 계정 인증을 완료했습니다."
-                  : "새 창에서 승인 후 이 페이지로 돌아오세요."}
+                  ? translate("Cloudflare 계정 인증을 완료했습니다.")
+                  : translate("새 창에서 승인 후 이 페이지로 돌아오세요.")}
               </p>
             </div>
           )}
@@ -1325,33 +1421,34 @@ export function DomainsPage() {
         <summary>
           <span className="admin-disclosure-title">
             <Link size={18} />
-            선택 사항 · 인터넷 연결
+            {translate("선택 사항 · 인터넷 연결")}
           </span>
           {connector.data && (
             <span className={`badge ${connector.data.healthy ? "" : "muted"}`}>
               {connector.data.healthy
-                ? "연결 정상"
+                ? translate("연결 정상")
                 : connector.data.running
-                  ? "연결 확인 중"
-                  : "연결 안 됨"}
+                  ? translate("연결 확인 중")
+                  : translate("연결 안 됨")}
             </span>
           )}
         </summary>
         <div className="admin-disclosure-body">
           <p className="subtle">
-            내부망 서버를 외부에 공개하려면 도메인 등록과 별도로 진입 경로가
-            필요합니다. 전용 Cloudflare Tunnel을 생성하고 실행할 수 있습니다.
+            {translate(
+              "내부망 서버를 외부에 공개하려면 도메인 등록과 별도로 진입 경로가 필요합니다. 전용 Cloudflare Tunnel을 생성하고 실행할 수 있습니다.",
+            )}
           </p>
           <div className="form-grid">
-            <Field label="전용 터널 이름">
+            <Field label={translate("전용 터널 이름")}>
               <input
                 value={tunnelName}
                 onChange={(e) => setTunnelName(e.target.value)}
               />
             </Field>
             <Field
-              label="연결할 호스트 이름"
-              hint="쉼표로 구분한 정확한 호스트 이름을 입력하세요."
+              label={translate("연결할 호스트 이름")}
+              hint={translate("쉼표로 구분한 정확한 호스트 이름을 입력하세요.")}
             >
               <input
                 value={hostnames}
@@ -1379,12 +1476,14 @@ export function DomainsPage() {
                   );
                   connector.reload();
                   setFeedback(
-                    "전용 터널을 구성했습니다. 실행 버튼으로 연결해 주세요.",
+                    translate(
+                      "전용 터널을 구성했습니다. 실행 버튼으로 연결해 주세요.",
+                    ),
                   );
                 })
               }
             >
-              전용 터널 구성
+              {translate("전용 터널 구성")}
             </button>
             <button
               className="button primary"
@@ -1399,7 +1498,7 @@ export function DomainsPage() {
                 })
               }
             >
-              연결 실행
+              {translate("연결 실행")}
             </button>
             <button
               className="button secondary"
@@ -1414,12 +1513,12 @@ export function DomainsPage() {
                 })
               }
             >
-              연결 중지
+              {translate("연결 중지")}
             </button>
             <button
               className="icon-button"
-              title="연결 상태 새로고침"
-              aria-label="연결 상태 새로고침"
+              title={translate("연결 상태 새로고침")}
+              aria-label={translate("연결 상태 새로고침")}
               onClick={connector.reload}
             >
               <RefreshCw size={16} />
@@ -1429,7 +1528,10 @@ export function DomainsPage() {
         </div>
       </details>
       {show && (
-        <Modal title="아티팩트 도메인 연결" onClose={() => setShow(false)}>
+        <Modal
+          title={translate("아티팩트 도메인 연결")}
+          onClose={() => setShow(false)}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1447,7 +1549,7 @@ export function DomainsPage() {
             }}
           >
             <div className="modal-body">
-              <Field label="호스트 이름">
+              <Field label={translate("호스트 이름")}>
                 <input
                   required
                   value={form.hostname}
@@ -1458,7 +1560,7 @@ export function DomainsPage() {
                   autoCapitalize="none"
                 />
               </Field>
-              <Field label="연결할 아티팩트">
+              <Field label={translate("연결할 아티팩트")}>
                 <select
                   required
                   value={form.artifactId}
@@ -1466,7 +1568,7 @@ export function DomainsPage() {
                     setForm({ ...form, artifactId: e.target.value })
                   }
                 >
-                  <option value="">아티팩트 선택</option>
+                  <option value="">{translate("아티팩트 선택")}</option>
                   {arts.data?.artifacts.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.title}
@@ -1474,15 +1576,19 @@ export function DomainsPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="DNS 연결 방식">
+              <Field label={translate("DNS 연결 방식")}>
                 <select
                   value={form.provider}
                   onChange={(e) =>
                     setForm({ ...form, provider: e.target.value })
                   }
                 >
-                  <option value="manual">DNS 레코드 직접 등록</option>
-                  <option value="cloudflare">Cloudflare 자동 등록</option>
+                  <option value="manual">
+                    {translate("DNS 레코드 직접 등록")}
+                  </option>
+                  <option value="cloudflare">
+                    {translate("Cloudflare 자동 등록")}
+                  </option>
                   <option
                     value="domainconnect"
                     disabled={
@@ -1491,13 +1597,15 @@ export function DomainsPage() {
                       )?.supported
                     }
                   >
-                    Domain Connect · 지원 DNS 서비스
+                    {translate("Domain Connect · 지원 DNS 서비스")}
                   </option>
                 </select>
               </Field>
               <Field
-                label="연결 대상 (선택)"
-                hint="비워두면 이 아티팩트의 기본 콘텐츠 주소를 사용합니다."
+                label={translate("연결 대상 (선택)")}
+                hint={translate(
+                  "비워두면 이 아티팩트의 기본 콘텐츠 주소를 사용합니다.",
+                )}
               >
                 <input
                   value={form.target}
@@ -1506,8 +1614,9 @@ export function DomainsPage() {
                 />
               </Field>
               <Notice>
-                다음 단계에서 소유권 확인용 TXT와 연결 레코드를 안내합니다. 기존
-                DNS 레코드는 자동으로 덮어쓰지 않습니다.
+                {translate(
+                  "다음 단계에서 소유권 확인용 TXT와 연결 레코드를 안내합니다. 기존 DNS 레코드는 자동으로 덮어쓰지 않습니다.",
+                )}
               </Notice>
               <ErrorBox error={a.error} />
             </div>
@@ -1517,10 +1626,10 @@ export function DomainsPage() {
                 className="button secondary"
                 onClick={() => setShow(false)}
               >
-                취소
+                {translate("취소")}
               </button>
               <button className="button primary" disabled={a.busy}>
-                {a.busy ? <Spinner /> : "다음: DNS 등록"}
+                {a.busy ? <Spinner /> : translate("다음: DNS 등록")}
               </button>
             </footer>
           </form>
@@ -1531,6 +1640,7 @@ export function DomainsPage() {
 }
 
 export function AgentsPage() {
+  useLocale();
   const r = useResource<{ tokens: Token[] }>("/api/tokens");
   const [name, setName] = useState("");
   const [expires, setExpires] = useState("");
@@ -1553,18 +1663,22 @@ export function AgentsPage() {
   return (
     <div className="admin-surface admin-agents">
       <PageHeading
-        title="에이전트 연결"
-        description="모델이나 구독에 종속되지 않는 MCP 도구와 CLI를 연결하세요."
+        title={translate("에이전트 연결")}
+        description={translate(
+          "모델이나 구독에 종속되지 않는 MCP 도구와 CLI를 연결하세요.",
+        )}
       />
       <ErrorBox error={r.error || a.error} />
       <p className="agent-context">
         <Terminal size={17} />
-        API 토큰으로 허용할 작업을 정한 뒤 MCP 또는 CLI를 연결하세요.
+        {translate(
+          "API 토큰으로 허용할 작업을 정한 뒤 MCP 또는 CLI를 연결하세요.",
+        )}
       </p>
       <div className="agent-setup">
         <section className="panel">
           <div className="section-title">
-            <h2>1. API 토큰 발급</h2>
+            <h2>{translate("1. API 토큰 발급")}</h2>
             <KeyRound size={19} />
           </div>
           <form
@@ -1585,20 +1699,21 @@ export function AgentsPage() {
               });
             }}
           >
-            <Field label="토큰 이름">
+            <Field label={translate("토큰 이름")}>
               <input
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: 내 개발 에이전트"
+                placeholder={translate("예: 내 개발 에이전트")}
               />
             </Field>
             <fieldset className="scope-checks">
-              <legend>허용할 작업</legend>
+              <legend>{translate("허용할 작업")}</legend>
               {[
-                { id: "read", label: "목록·미리보기" },
-                { id: "publish", label: "게시·버전 갱신·보관" },
-                { id: "share", label: "공유 설정 변경" },
+                { id: "read", label: translate("목록·미리보기") },
+                { id: "publish", label: translate("게시·버전 갱신·보관") },
+                { id: "share", label: translate("공유 설정 변경") },
+                { id: "review", label: translate("검토·댓글 작성") },
               ].map((x) => (
                 <label key={x.id}>
                   <input
@@ -1616,7 +1731,7 @@ export function AgentsPage() {
                 </label>
               ))}
             </fieldset>
-            <Field label="만료일 (선택)">
+            <Field label={translate("만료일 (선택)")}>
               <input
                 type="datetime-local"
                 value={expires}
@@ -1627,57 +1742,64 @@ export function AgentsPage() {
               className="button primary"
               disabled={a.busy || !scopes.length}
             >
-              {a.busy ? <Spinner /> : "토큰 발급"}
+              {a.busy ? <Spinner /> : translate("토큰 발급")}
             </button>
           </form>
           {secret && (
             <div className="secret-box vertical">
-              <b>한 번만 표시하는 API 토큰</b>
+              <b>{translate("한 번만 표시하는 API 토큰")}</b>
               <code>{secret}</code>
               <CopyButton text={secret} />
-              <small>안전하게 보관한 후 이 표시를 닫아주세요.</small>
+              <small>
+                {translate("안전하게 보관한 후 이 표시를 닫아주세요.")}
+              </small>
               <button
                 className="button secondary compact"
                 onClick={() => setSecret("")}
               >
-                토큰 표시 닫기
+                {translate("토큰 표시 닫기")}
               </button>
             </div>
           )}
         </section>
         <section className="panel">
           <div className="section-title">
-            <h2>2. MCP 연결</h2>
+            <h2>{translate("2. MCP 연결")}</h2>
             <Server size={19} />
           </div>
           <p className="subtle">
-            Folio CLI를 설치한 뒤 에이전트의 MCP 설정에 추가하세요. 토큰을 공개
-            저장소에 넣지 마세요.
+            {translate(
+              "Folio CLI를 설치한 뒤 에이전트의 MCP 설정에 추가하세요. 토큰을 공개 저장소에 넣지 마세요.",
+            )}
           </p>
           <pre className="code-block">{mcp}</pre>
-          <CopyButton text={mcp} label="설정 복사" />
+          <CopyButton text={mcp} label={translate("설정 복사")} />
           <details className="admin-code-guide">
-            <summary>CLI로 바로 게시</summary>
+            <summary>{translate("CLI로 바로 게시")}</summary>
             <pre className="code-block">
               {"folio login --token-stdin --url " +
                 location.origin +
                 "\nfolio publish ./my-artifact\nfolio mcp"}
             </pre>
             <p className="subtle">
-              지원 도구: 아티팩트 목록·검색·게시·수정·공유·보관·복원·한도 확인
+              {translate(
+                "지원 도구: 아티팩트 목록·검색·게시·수정·공유·보관·복원·한도 확인",
+              )}
             </p>
           </details>
         </section>
       </div>
       <section className="panel">
         <div className="section-title">
-          <h2>내 API 토큰</h2>
+          <h2>{translate("내 API 토큰")}</h2>
           <span className="subtle">
-            폐기하면 연결된 에이전트의 접근도 해제됩니다.
+            {translate("폐기하면 연결된 에이전트의 접근도 해제됩니다.")}
           </span>
         </div>
         {!r.data?.tokens.length ? (
-          <p className="muted-padded">아직 발급한 토큰이 없습니다.</p>
+          <p className="muted-padded">
+            {translate("아직 발급한 토큰이 없습니다.")}
+          </p>
         ) : (
           r.data.tokens.map((t) => (
             <div className="connection-row" key={t.id}>
@@ -1685,8 +1807,11 @@ export function AgentsPage() {
               <div className="connection-name">
                 <b>{t.name}</b>
                 <small>
-                  {t.scopes.join(" · ")} · {date(t.createdAt)} 발급
-                  {t.expiresAt ? ` · ${date(t.expiresAt)} 만료` : ""}
+                  {t.scopes.join(" · ")} ·{" "}
+                  {translate("{p0} 발급", { p0: date(t.createdAt) })}
+                  {t.expiresAt
+                    ? translate(" · {p0} 만료", { p0: date(t.expiresAt) })
+                    : ""}
                 </small>
               </div>
               <button
@@ -1699,7 +1824,7 @@ export function AgentsPage() {
                   })
                 }
               >
-                폐기
+                {translate("폐기")}
               </button>
             </div>
           ))
@@ -1710,6 +1835,7 @@ export function AgentsPage() {
 }
 
 export function SettingsPage({ onChanged }: { onChanged: () => void }) {
+  useLocale();
   const r = useResource<{
     organization: Organization;
     policy: Policy;
@@ -1725,14 +1851,14 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
   return (
     <div className="admin-surface admin-settings">
       <PageHeading
-        title="조직 설정"
-        description="조직 이름과 설치 정보를 확인합니다."
+        title={translate("조직 설정")}
+        description={translate("조직 이름과 설치 정보를 확인합니다.")}
       />
       <ErrorBox error={r.error || a.error} />
       <section className="panel admin-section">
         <div className="admin-section-heading">
-          <h2>조직 정보</h2>
-          <p>작업 공간에서 사용할 이름입니다.</p>
+          <h2>{translate("조직 정보")}</h2>
+          <p>{translate("작업 공간에서 사용할 이름입니다.")}</p>
         </div>
         <form
           onSubmit={(e) => {
@@ -1748,7 +1874,7 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
             });
           }}
         >
-          <Field label="조직 이름">
+          <Field label={translate("조직 이름")}>
             <input
               required
               value={name}
@@ -1760,12 +1886,12 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
             />
           </Field>
           <button className="button primary" disabled={a.busy}>
-            {a.busy ? <Spinner /> : "변경 사항 저장"}
+            {a.busy ? <Spinner /> : translate("변경 사항 저장")}
           </button>
           {saved && (
             <span className="saved-inline">
               <CheckCircle2 size={15} />
-              저장했습니다.
+              {translate("저장했습니다.")}
             </span>
           )}
         </form>
@@ -1773,31 +1899,36 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
       <GoogleAuthSettings />
       <details className="admin-disclosure admin-installation">
         <summary>
-          <span className="admin-disclosure-title">설치 정보</span>
-          <span className="subtle">관리 주소와 콘텐츠 호스트</span>
+          <span className="admin-disclosure-title">
+            {translate("설치 정보")}
+          </span>
+          <span className="subtle">
+            {translate("관리 주소와 콘텐츠 호스트")}
+          </span>
         </summary>
         <div className="admin-disclosure-body">
           <dl className="detail-list">
             <div>
-              <dt>관리 주소</dt>
+              <dt>{translate("관리 주소")}</dt>
               <dd>{r.data?.appUrl}</dd>
             </div>
             <div>
-              <dt>아티팩트 주소</dt>
+              <dt>{translate("아티팩트 주소")}</dt>
               <dd>{r.data?.contentUrl}</dd>
             </div>
             <div>
-              <dt>배포 방식</dt>
-              <dd>설치형 · 단일 조직</dd>
+              <dt>{translate("배포 방식")}</dt>
+              <dd>{translate("설치형 · 단일 조직")}</dd>
             </div>
             <div>
-              <dt>라이선스</dt>
-              <dd>MIT · Open source</dd>
+              <dt>{translate("라이선스")}</dt>
+              <dd>MIT · {translate("오픈 소스")}</dd>
             </div>
           </dl>
           <Notice>
-            아티팩트는 관리 페이지와 분리된 도메인에서 실행합니다. 주소 변경은
-            서버 설정에서 적용해 주세요.
+            {translate(
+              "아티팩트는 관리 페이지와 분리된 도메인에서 실행합니다. 주소 변경은 서버 설정에서 적용해 주세요.",
+            )}
           </Notice>
         </div>
       </details>
@@ -1805,16 +1936,19 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
   );
 }
 export function AuditPage() {
+  useLocale();
   const r = useResource<{ events: Audit[] }>("/api/admin/audit?limit=100");
   return (
     <div className="admin-surface admin-audit">
       <PageHeading
-        title="변경 기록"
-        description="계정, 공유, 게시와 보관 정책의 변경을 확인합니다."
+        title={translate("변경 기록")}
+        description={translate(
+          "계정, 공유, 게시와 보관 정책의 변경을 확인합니다.",
+        )}
         action={
           <button className="button secondary" onClick={r.reload}>
             <RefreshCw size={16} />
-            새로고침
+            {translate("새로고침")}
           </button>
         }
       />
@@ -1827,8 +1961,10 @@ export function AuditPage() {
         ) : !r.data?.events.length ? (
           <Empty
             icon={<ShieldCheck size={30} />}
-            heading="아직 기록이 없습니다"
-            description="작업 공간에서 일어난 변경 사항이 여기에 남습니다."
+            heading={translate("아직 기록이 없습니다")}
+            description={translate(
+              "작업 공간에서 일어난 변경 사항이 여기에 남습니다.",
+            )}
           />
         ) : (
           <div className="audit-list">
@@ -1838,7 +1974,7 @@ export function AuditPage() {
                 <div>
                   <b>{e.action}</b>
                   <p>
-                    {e.actorName || "시스템"}
+                    {e.actorName || translate("시스템")}
                     {e.detail ? ` · ${e.detail}` : ""}
                   </p>
                 </div>
@@ -1859,6 +1995,7 @@ export function AccountPage({
   session: Session;
   onSession: (s: Session) => void;
 }) {
+  useLocale();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -1867,41 +2004,46 @@ export function AccountPage({
   return (
     <div className="admin-surface admin-account">
       <PageHeading
-        title="내 계정"
+        title={translate("내 계정")}
         description={
           session.user.loginMethod === "google"
-            ? "계정 정보와 로그인 방법을 확인합니다."
-            : "계정 정보를 확인하고 비밀번호를 변경합니다."
+            ? translate("계정 정보와 로그인 방법을 확인합니다.")
+            : translate("계정 정보를 확인하고 비밀번호를 변경합니다.")
         }
       />
       <section className="panel admin-section">
         <div className="admin-section-heading">
-          <h2>계정 정보</h2>
+          <h2>{translate("계정 정보")}</h2>
         </div>
         <dl className="detail-list">
           <div>
-            <dt>이름</dt>
+            <dt>{translate("이름")}</dt>
             <dd>{session.user.name}</dd>
           </div>
           <div>
-            <dt>이메일</dt>
+            <dt>{translate("이메일")}</dt>
             <dd>{session.user.email}</dd>
           </div>
           <div>
-            <dt>역할</dt>
-            <dd>{session.user.role === "admin" ? "관리자" : "구성원"}</dd>
+            <dt>{translate("역할")}</dt>
+            <dd>
+              {session.user.role === "admin"
+                ? translate("관리자")
+                : translate("구성원")}
+            </dd>
           </div>
         </dl>
       </section>
       {session.user.loginMethod === "google" ? (
         <section className="panel admin-section">
           <div className="admin-section-heading">
-            <h2>Google 로그인</h2>
+            <h2>{translate("Google 로그인")}</h2>
           </div>
           <div>
             <p className="subtle">
-              Google 계정으로 로그인하는 계정입니다. 비밀번호는 Google 계정에서
-              관리하며 Folio 비밀번호는 사용하지 않습니다.
+              {translate(
+                "Google 계정으로 로그인하는 계정입니다. 비밀번호는 Google 계정에서 관리하며 Folio 비밀번호는 사용하지 않습니다.",
+              )}
             </p>
             <a
               className="button secondary"
@@ -1909,22 +2051,29 @@ export function AccountPage({
               target="_blank"
               rel="noreferrer"
             >
-              Google 계정 보안 설정 <ExternalLink size={15} />
+              {translate("Google 계정 보안 설정")}
+              <ExternalLink size={15} />
             </a>
           </div>
         </section>
       ) : (
         <section className="panel admin-section">
           <div className="admin-section-heading">
-            <h2>비밀번호 변경</h2>
-            <p>변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.</p>
+            <h2>{translate("비밀번호 변경")}</h2>
+            <p>
+              {translate(
+                "변경하면 다른 로그인 세션과 기존 API 토큰이 해제됩니다.",
+              )}
+            </p>
           </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void a.run(async () => {
                 if (next !== confirm)
-                  throw new Error("새 비밀번호가 일치하지 않습니다.");
+                  throw new Error(
+                    translate("새 비밀번호가 일치하지 않습니다."),
+                  );
                 const s = await api<Session>(
                   "/api/auth/password",
                   json("POST", { currentPassword: current, newPassword: next }),
@@ -1939,7 +2088,7 @@ export function AccountPage({
             }}
           >
             <div className="form-grid">
-              <Field label="현재 비밀번호">
+              <Field label={translate("현재 비밀번호")}>
                 <input
                   required
                   type="password"
@@ -1951,7 +2100,7 @@ export function AccountPage({
               <div />
             </div>
             <div className="form-grid">
-              <Field label="새 비밀번호">
+              <Field label={translate("새 비밀번호")}>
                 <input
                   required
                   type="password"
@@ -1961,7 +2110,7 @@ export function AccountPage({
                   onChange={(e) => setNext(e.target.value)}
                 />
               </Field>
-              <Field label="새 비밀번호 확인">
+              <Field label={translate("새 비밀번호 확인")}>
                 <input
                   required
                   type="password"
@@ -1974,12 +2123,12 @@ export function AccountPage({
             </div>
             <ErrorBox error={a.error} />
             <button className="button primary" disabled={a.busy}>
-              {a.busy ? <Spinner /> : "비밀번호 변경"}
+              {a.busy ? <Spinner /> : translate("비밀번호 변경")}
             </button>
             {saved && (
               <span className="saved-inline">
                 <CheckCircle2 size={15} />
-                비밀번호를 변경했습니다.
+                {translate("비밀번호를 변경했습니다.")}
               </span>
             )}
           </form>

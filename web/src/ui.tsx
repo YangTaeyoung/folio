@@ -1,3 +1,4 @@
+import { t as translate, useLocale, localizedError } from "./i18n";
 import {
   cloneElement,
   isValidElement,
@@ -18,21 +19,28 @@ import {
 import { copy } from "./api";
 
 export function Spinner() {
-  return <Loader2 className="spin" size={18} aria-label="불러오는 중" />;
+  useLocale();
+  return (
+    <Loader2 className="spin" size={18} aria-label={translate("불러오는 중")} />
+  );
 }
 export function ErrorBox({ error }: { error: unknown }) {
+  useLocale();
   return error ? (
     <div role="alert" className="error-box">
       <AlertCircle size={18} />
-      <span>{error instanceof Error ? error.message : String(error)}</span>
+      <span>{localizedError(error)}</span>
     </div>
   ) : null;
 }
 export function Notice({ children }: { children: ReactNode }) {
+  useLocale();
   return (
     <div className="notice">
       <CheckCircle2 size={17} />
-      <span>{children}</span>
+      <span>
+        {typeof children === "string" ? translate(children) : children}
+      </span>
     </div>
   );
 }
@@ -45,6 +53,7 @@ export function Field({
   children: ReactNode;
   hint?: string;
 }) {
+  useLocale();
   const id = useId();
   return (
     <div className="field">
@@ -61,13 +70,14 @@ export function Field({
 }
 export function CopyButton({
   text,
-  label = "복사",
+  label = translate("복사"),
   onCopied,
 }: {
   text: string;
   label?: string;
   onCopied?: () => void;
 }) {
+  useLocale();
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -87,17 +97,18 @@ export function CopyButton({
         }}
       >
         {done ? <Check size={15} /> : <Copy size={15} />}{" "}
-        {done ? "복사됨" : label}
+        {done ? translate("복사됨") : label}
       </button>
       {error && (
         <span role="alert" className="inline-error">
-          {error}
+          {localizedError(error)}
         </span>
       )}
     </>
   );
 }
 export function Avatar({ name }: { name: string }) {
+  useLocale();
   return (
     <span className="avatar" aria-hidden="true">
       {name.trim().slice(0, 2).toUpperCase()}
@@ -119,6 +130,7 @@ export function Modal({
   drawer?: boolean;
   className?: string;
 }) {
+  useLocale();
   const ref = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -180,7 +192,11 @@ export function Modal({
       >
         <header className="dialog-header">
           <h2>{title}</h2>
-          <button className="icon-button" aria-label="닫기" onClick={onClose}>
+          <button
+            className="icon-button"
+            aria-label={translate("닫기")}
+            onClick={onClose}
+          >
             <X size={21} />
           </button>
         </header>
@@ -200,6 +216,7 @@ export function Empty({
   description: string;
   action?: ReactNode;
 }) {
+  useLocale();
   return (
     <div className="empty">
       <div className="empty-symbol">{icon}</div>

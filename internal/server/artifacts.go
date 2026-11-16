@@ -90,7 +90,26 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 		slug := strings.TrimPrefix(r.URL.Path, "/api/share/")
 		for _, a := range s.st.Artifacts {
 			if a.Slug == slug && s.read(p, a) {
-				writeJSON(w, 200, map[string]any{"artifact": s.publicArtifact(a)})
+				shared := s.publicArtifactFor(principal{}, a)
+				if vid := r.URL.Query().Get("version"); vid != "" {
+					v, ok := s.version(a, vid)
+					if !ok || !s.readVersion(p, a, v) {
+						return fail(404, "not_found", "Version not found")
+					}
+					shared = s.publicArtifactFor(p, a)
+					shared.CurrentVersionID = v.ID
+					shared.SizeBytes = v.SizeBytes
+					shared.Provenance = v.Provenance
+					if v.MetadataSnapshot {
+						shared.Title = v.Title
+						shared.Description = v.Description
+						shared.Tags = append([]string{}, v.Tags...)
+					}
+				}
+				if shared.CurrentVersionID == "" {
+					return fail(404, "not_found", "No published version")
+				}
+				writeJSON(w, 200, map[string]any{"artifact": shared})
 				return nil
 			}
 		}
@@ -124,10 +143,21 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 			if (view == "library" && (a.Archived || (a.OwnerID != p.user.ID && a.Visibility == "private"))) || (view == "mine" && (a.OwnerID != p.user.ID || a.Archived)) || (view == "shared" && (a.OwnerID == p.user.ID || a.Archived || a.Visibility == "private")) || (view == "archive" && !a.Archived) || (view == "all" && a.Archived) {
 				continue
 			}
-			if q != "" && !strings.Contains(strings.ToLower(a.Title+" "+a.Description), q) {
+			visible := s.publicArtifactFor(p, a)
+			if r.URL.Query().Get("favorite") == "true" && !visible.Favorite {
 				continue
 			}
-			items = append(items, s.publicArtifact(a))
+			if tag := r.URL.Query().Get("tag"); tag != "" && !contains(visible.Tags, tag) {
+				continue
+			}
+			if q != "" {
+				snippet, match := s.matchArtifact(r.Context(), p, a, q)
+				if !match {
+					continue
+				}
+				visible.SearchSnippet = snippet
+			}
+			items = append(items, visible)
 		}
 		sort.Slice(items, func(i, j int) bool {
 			if r.URL.Query().Get("sort") == "title" {
@@ -155,6 +185,18 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 	if !ok || !s.read(p, a) {
 		return fail(404, "not_found", "Artifact not found")
 	}
+	if len(parts) >= 3 {
+		switch parts[2] {
+		case "comments", "review", "promote", "reviewers":
+			return s.reviews(w, r, p, a, parts)
+		case "guest-links":
+			return s.guestLinks(w, r, p, a)
+		case "metadata", "favorite":
+			return s.artifactMetadata(w, r, p, a, parts[2])
+		case "diff":
+			return s.diff(w, r, p, a)
+		}
+	}
 	if len(parts) == 3 && parts[2] == "launch" && r.Method == "POST" {
 		if p.user != nil {
 			if e := s.require(r, p, false, "read"); e != nil {
@@ -171,12 +213,22 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 	if len(parts) == 2 && r.Method == "GET" {
 		v := []Version{}
 		for _, x := range s.st.Versions[id] {
-			v = append(v, s.publicVersion(x))
+			if s.readVersion(p, a, x) {
+				v = append(v, s.publicVersion(x))
+			}
 		}
-		writeJSON(w, 200, map[string]any{"artifact": s.publicArtifact(a), "versions": v})
+		writeJSON(w, 200, map[string]any{"artifact": s.publicArtifactFor(p, a), "versions": v})
 		return nil
 	}
 	if len(parts) == 3 && parts[2] == "download" && r.Method == "GET" {
+		v, ok := s.version(a, r.URL.Query().Get("versionId"))
+		if r.URL.Query().Get("versionId") == "" {
+			v, ok = s.version(a, s.effectiveVersionID(p, a))
+		}
+		if !ok || !s.readVersion(p, a, v) {
+			return fail(404, "not_found", "Version not found")
+		}
+		a.CurrentVersionID = v.ID
 		return s.download(w, r, a)
 	}
 	scope := "publish"
@@ -248,12 +300,7 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 		return nil
 	}
 	if len(parts) == 2 && r.Method == "DELETE" {
-		if e := s.mutate(func() error { s.tombstone(id); s.audit(p, "artifact.deleted", id, ""); return nil }); e != nil {
-			return e
-		}
-		s.gc(r.Context())
-		w.WriteHeader(204)
-		return nil
+		return s.trash(w, r, p, a)
 	}
 	if len(parts) == 5 && parts[2] == "versions" && parts[4] == "restore" && r.Method == "POST" {
 		var v *Version
@@ -268,6 +315,9 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 			return fail(404, "not_found", "Version not found")
 		}
 		a.CurrentVersionID = v.ID
+		if !a.ReviewEnabled {
+			a.PublishedVersionID = v.ID
+		}
 		a.SizeBytes = v.SizeBytes
 		a.UpdatedAt = now()
 		if e := s.mutate(func() error { s.st.Artifacts[id] = a; s.audit(p, "artifact.rollback", id, v.ID); return nil }); e != nil {
@@ -280,14 +330,17 @@ func (s *Server) artifacts(w http.ResponseWriter, r *http.Request, p principal) 
 }
 
 type uploadMeta struct {
-	Title                    string     `json:"title"`
-	Description              string     `json:"description"`
-	Slug                     string     `json:"slug"`
-	Visibility               string     `json:"visibility"`
-	MemberIDs                []string   `json:"memberIds"`
-	ExpiresAt                *time.Time `json:"expiresAt"`
-	Message                  string     `json:"message"`
-	BaseVersionID            string     `json:"baseVersionId"`
+	Title                    string      `json:"title"`
+	Description              string      `json:"description"`
+	Slug                     string      `json:"slug"`
+	Visibility               string      `json:"visibility"`
+	MemberIDs                []string    `json:"memberIds"`
+	ExpiresAt                *time.Time  `json:"expiresAt"`
+	Message                  string      `json:"message"`
+	BaseVersionID            string      `json:"baseVersionId"`
+	Draft                    bool        `json:"draft"`
+	Provenance               *Provenance `json:"provenance,omitempty"`
+	Tags                     *[]string   `json:"tags,omitempty"`
 	titleSet, descriptionSet bool
 	Files                    []struct {
 		Path     string `json:"path"`
@@ -499,7 +552,7 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 		if m.Slug == "" {
 			m.Slug = "a-" + digest(random())[:16]
 		}
-		if !slugOK(m.Slug) {
+		if !slugOK(m.Slug) || strings.HasPrefix(m.Slug, "v--") {
 			queueOrphans()
 			return fail(400, "invalid_slug", "Slug must be a DNS-safe lowercase label")
 		}
@@ -512,7 +565,7 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 		id = random()
 	} else {
 		a, ok := s.st.Artifacts[id]
-		if !ok || !s.own(p, a) {
+		if !ok || a.DeletedAt != nil || !s.own(p, a) {
 			queueOrphans()
 			return fail(404, "not_found", "Artifact not found")
 		}
@@ -544,7 +597,25 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 			a.MemberIDs = m.MemberIDs
 		}
 	}
-	v := Version{ID: random(), ArtifactID: id, Number: len(s.st.Versions[id]) + 1, CreatedAt: now(), SizeBytes: st.size, BackendID: backendID, Files: st.files, Message: m.Message}
+	if m.Provenance != nil {
+		if e := validateProvenance(*m.Provenance); e != nil {
+			queueOrphans()
+			return e
+		}
+		a.Provenance = *m.Provenance
+	}
+	if m.Tags != nil {
+		tags, e := cleanTags(*m.Tags)
+		if e != nil {
+			queueOrphans()
+			return e
+		}
+		a.Tags = tags
+	}
+	v := Version{ID: random(), ArtifactID: id, Number: len(s.st.Versions[id]) + 1, CreatedAt: now(), SizeBytes: st.size, BackendID: backendID, Files: st.files, Message: m.Message, Provenance: a.Provenance, Title: a.Title, Description: a.Description, Tags: append([]string{}, a.Tags...), MetadataSnapshot: true}
+	// Text is indexed before publication and persisted with the version, never executed.
+	v.SearchText = s.extractVersionText(r.Context(), v)
+	v.SearchIndexed = true
 	e = s.mutate(func() error {
 		need := s.used() + v.SizeBytes - s.st.Policy.QuotaBytes
 		if need > 0 {
@@ -565,6 +636,17 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 				return fail(413, "quota_exceeded", "Archived or protected data prevents quota admission")
 			}
 		}
+		if m.Draft && !a.ReviewEnabled {
+			a.ReviewEnabled = true
+			a.PublishedVersionID = a.CurrentVersionID
+			for i := range s.st.Versions[id] {
+				s.st.Versions[id][i].Published = true
+			}
+		}
+		v.Published = !a.ReviewEnabled
+		if v.Published {
+			a.PublishedVersionID = v.ID
+		}
 		a.CurrentVersionID = v.ID
 		a.SizeBytes = v.SizeBytes
 		a.UpdatedAt = v.CreatedAt
@@ -577,7 +659,7 @@ func (s *Server) publish(w http.ResponseWriter, r *http.Request, p principal, id
 			}
 		}
 		s.st.Garbage = retained
-		s.audit(p, "artifact.published", id, v.ID)
+		s.audit(p, "artifact.version_created", id, v.ID)
 		return nil
 	})
 	if e != nil {
@@ -664,7 +746,7 @@ func (s *Server) eligible(exclude string) []Artifact {
 	out := []Artifact{}
 	for _, a := range s.st.Artifacts {
 		u, ok := s.st.Users[a.OwnerID]
-		if a.ID != exclude && s.inFlight[a.ID] == 0 && !a.Archived && ok && !u.Disabled {
+		if a.ID != exclude && s.inFlight[a.ID] == 0 && a.DeletedAt == nil && !a.Archived && ok && !u.Disabled {
 			out = append(out, a)
 		}
 	}
@@ -677,6 +759,35 @@ func (s *Server) eligible(exclude string) []Artifact {
 	return out
 }
 func (s *Server) tombstone(id string) {
+	for key, c := range s.st.Comments {
+		if c.ArtifactID == id {
+			delete(s.st.Comments, key)
+		}
+	}
+	for key, r := range s.st.Reviews {
+		if r.ArtifactID == id {
+			delete(s.st.Reviews, key)
+		}
+	}
+	for key, g := range s.st.GuestLinks {
+		if g.ArtifactID == id {
+			delete(s.st.GuestLinks, key)
+		}
+	}
+	for key, col := range s.st.Collections {
+		ids := []string{}
+		for _, a := range col.ArtifactIDs {
+			if a != id {
+				ids = append(ids, a)
+			}
+		}
+		col.ArtifactIDs = ids
+		s.st.Collections[key] = col
+	}
+	for uid, favs := range s.st.Favorites {
+		delete(favs, id)
+		s.st.Favorites[uid] = favs
+	}
 	for _, v := range s.st.Versions[id] {
 		for _, f := range v.Files {
 			s.st.Garbage = append(s.st.Garbage, Garbage{BackendID: v.BackendID, Key: f.Key, Size: f.Size})
@@ -735,6 +846,14 @@ func (s *Server) gc(ctx context.Context) {
 }
 func (s *Server) cleanup(ctx context.Context, dry bool, p principal) (CleanupResult, error) {
 	out := CleanupResult{Candidates: []CleanupCandidate{}}
+	cutoffTrash := now().Add(-trashRetention)
+	for _, a := range s.st.Artifacts {
+		if a.DeletedAt != nil && !a.Archived && !a.DeletedAt.After(cutoffTrash) && s.inFlight[a.ID] == 0 {
+			n := s.artifactBytes(a.ID)
+			out.Candidates = append(out.Candidates, CleanupCandidate{a.ID, a.Title, "trash_expired", n})
+			out.FreedBytes += n
+		}
+	}
 	if s.st.Policy.RetentionDays > 0 {
 		cutoff := now().Add(-time.Duration(s.st.Policy.RetentionDays) * 24 * time.Hour)
 		for _, a := range s.eligible("") {
@@ -746,7 +865,13 @@ func (s *Server) cleanup(ctx context.Context, dry bool, p principal) (CleanupRes
 		}
 	}
 	if !dry {
+		for key, a := range s.loginAttempts {
+			if !a.Until.After(now()) {
+				delete(s.loginAttempts, key)
+			}
+		}
 		if e := s.mutate(func() error {
+			s.pruneGuestSessions()
 			for key, se := range s.st.Sessions {
 				if !se.ExpiresAt.After(now()) {
 					delete(s.st.Sessions, key)
@@ -764,7 +889,11 @@ func (s *Server) cleanup(ctx context.Context, dry bool, p principal) (CleanupRes
 			}
 			for _, c := range out.Candidates {
 				s.tombstone(c.ID)
-				s.audit(p, "artifact.retention_deleted", c.ID, "")
+				action := "artifact.retention_deleted"
+				if c.Reason == "trash_expired" {
+					action = "artifact.trash_expired"
+				}
+				s.audit(p, action, c.ID, "")
 			}
 			s.audit(p, "cleanup.executed", "", "")
 			return nil

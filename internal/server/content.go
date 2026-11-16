@@ -13,9 +13,28 @@ func (s *Server) canonical(a Artifact) *url.URL {
 	u, _ := url.Parse(strings.ReplaceAll(s.cfg.ContentURL, "{artifact}", a.Slug))
 	return u
 }
+
+// canonicalVersion isolates browser-origin state as well as root-absolute URLs.
+func (s *Server) canonicalVersion(a Artifact, versionID string) *url.URL {
+	u, _ := url.Parse(strings.ReplaceAll(s.cfg.ContentURL, "{artifact}", "v--"+digest(a.ID + "/" + versionID)[:32]))
+	return u
+}
+func (s *Server) versionForHost(a Artifact, host string) string {
+	for _, v := range s.st.Versions[a.ID] {
+		if strings.EqualFold(s.canonicalVersion(a, v.ID).Host, host) {
+			return v.ID
+		}
+	}
+	return ""
+}
 func (s *Server) hostFor(a Artifact, host string) (*url.URL, bool) {
 	u := s.canonical(a)
 	if host == "" || strings.ToLower(host) == strings.ToLower(u.Host) {
+		return u, true
+	}
+	if s.versionForHost(a, host) != "" {
+		u, _ := url.Parse(strings.ReplaceAll(s.cfg.ContentURL, "{artifact}", "sample"))
+		u.Host = strings.ToLower(host)
 		return u, true
 	}
 	if strings.ContainsAny(host, "/\\@?# ") || strings.Contains(host, ":") {
@@ -29,20 +48,40 @@ func (s *Server) hostFor(a Artifact, host string) (*url.URL, bool) {
 	return nil, false
 }
 func (s *Server) launch(w http.ResponseWriter, r *http.Request, p principal, a Artifact) error {
-	var in struct{ VersionID, Hostname string }
+	var in struct {
+		VersionID, Hostname string
+		IsolatedVersion     bool `json:"isolatedVersion"`
+	}
 	if e := decode(r, &in); e != nil {
 		return e
 	}
+	if in.VersionID == "" {
+		in.VersionID = s.effectiveVersionID(p, a)
+	}
 	v, ok := s.version(a, in.VersionID)
-	if !ok {
+	if !ok || !s.readVersion(p, a, v) {
 		return fail(404, "not_found", "Version not found")
 	}
 	host, ok := s.hostFor(a, in.Hostname)
-	if !ok {
+	if in.IsolatedVersion {
+		if in.Hostname != "" {
+			return fail(400, "invalid_hostname", "Version isolation uses the configured content origin")
+		}
+		host = s.canonicalVersion(a, v.ID)
+		ok = true
+	}
+	if !ok || host == nil {
 		return fail(400, "invalid_hostname", "Destination must be this artifact's canonical or verified custom hostname")
+	}
+	if bound := s.versionForHost(a, host.Host); bound != "" && bound != v.ID {
+		return fail(400, "invalid_hostname", "Hostname belongs to a different version")
 	}
 	nonce := random()
 	view := Viewer{ArtifactID: a.ID, VersionID: v.ID, Host: strings.ToLower(host.Host), ExpiresAt: now().Add(60 * time.Second)}
+	if p.kind == "guest" {
+		view.Kind = "guest"
+		view.Credential = p.credential
+	}
 	if p.user != nil {
 		view.UserID = p.user.ID
 		view.Credential = p.credential
@@ -51,12 +90,15 @@ func (s *Server) launch(w http.ResponseWriter, r *http.Request, p principal, a A
 	if e := s.mutate(func() error { s.st.Grants[digest(nonce)] = view; return nil }); e != nil {
 		return e
 	}
-	writeJSON(w, 200, map[string]any{"url": host.String() + "/grant/" + nonce})
+	writeJSON(w, 200, map[string]any{"url": host.String() + "/grant/" + nonce, "hostname": host.Host, "isolatedVersion": in.IsolatedVersion})
 	return nil
 }
 func (s *Server) viewerPrincipal(v Viewer) (principal, bool) {
 	if !v.ExpiresAt.After(now()) {
 		return principal{}, false
+	}
+	if v.Kind == "guest" {
+		return s.guestViewerPrincipal(v)
 	}
 	if v.UserID == "" {
 		return principal{}, true
@@ -130,11 +172,35 @@ func (s *Server) ContentHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		boundVersion := s.versionForHost(a, r.Host)
 		if strings.HasPrefix(r.URL.Path, "/grant/") {
 			nonce := strings.TrimPrefix(r.URL.Path, "/grant/")
 			v, ok := s.st.Grants[digest(nonce)]
-			if !ok || v.Host != strings.ToLower(r.Host) || v.ArtifactID != a.ID {
+			if !ok || v.Host != strings.ToLower(r.Host) || v.ArtifactID != a.ID || (boundVersion != "" && boundVersion != v.VersionID) {
 				http.NotFound(w, r)
+				return
+			}
+			if v.ViewerDigest != "" {
+				// A consumed grant may only redirect the exact browser credential
+				// that already exchanged it. No new session or lifetime is issued.
+				secure := s.contentSecure(a, r.Host)
+				matched := false
+				for _, name := range []string{viewerVersionCookieName(secure, v.VersionID), viewerCookieName(secure)} {
+					if len(r.CookiesNamed(name)) != 1 {
+						continue
+					}
+					if c, e := r.Cookie(name); e == nil && digest(c.Value) == v.ViewerDigest {
+						matched = true
+					}
+				}
+				current, exists := s.st.Viewers[v.ViewerDigest]
+				pp, active := s.viewerPrincipal(current)
+				ver, vok := s.version(a, v.VersionID)
+				if !matched || !exists || current.Host != v.Host || current.ArtifactID != a.ID || current.VersionID != v.VersionID || !active || !vok || !s.readVersion(pp, a, ver) {
+					http.NotFound(w, r)
+					return
+				}
+				http.Redirect(w, r, "/render/"+a.ID+"/"+v.VersionID+"/index.html", http.StatusSeeOther)
 				return
 			}
 			p, active := s.viewerPrincipal(v)
@@ -142,35 +208,59 @@ func (s *Server) ContentHandler() http.Handler {
 				http.NotFound(w, r)
 				return
 			}
-			if _, ok = s.version(a, v.VersionID); !ok {
+			if ver, exists := s.version(a, v.VersionID); !exists || !s.readVersion(p, a, ver) {
 				http.NotFound(w, r)
 				return
 			}
 			plain := random()
 			v.ExpiresAt = now().Add(12 * time.Hour)
-			if e := s.mutate(func() error { delete(s.st.Grants, digest(nonce)); s.st.Viewers[digest(plain)] = v; return nil }); e != nil {
+			if e := s.mutate(func() error {
+				s.st.Viewers[digest(plain)] = v
+				receipt := v
+				receipt.ViewerDigest = digest(plain)
+				s.st.Grants[digest(nonce)] = receipt
+				return nil
+			}); e != nil {
 				errorJSON(w, e)
 				return
 			}
-			secure := s.canonical(a).Scheme == "https" || !strings.EqualFold(r.Host, s.canonical(a).Host)
+			secure := s.contentSecure(a, r.Host)
 			sameSite := http.SameSiteLaxMode
 			if secure {
 				sameSite = http.SameSiteNoneMode
 			}
 			http.SetCookie(w, &http.Cookie{Name: viewerCookieName(secure), Value: plain, Path: "/", HttpOnly: true, Secure: secure, SameSite: sameSite, Partitioned: secure, MaxAge: 12 * 3600})
+			http.SetCookie(w, &http.Cookie{Name: viewerVersionCookieName(secure, v.VersionID), Value: plain, Path: "/", HttpOnly: true, Secure: secure, SameSite: sameSite, Partitioned: secure, MaxAge: 12 * 3600})
 			http.Redirect(w, r, "/render/"+a.ID+"/"+v.VersionID+"/index.html", http.StatusSeeOther)
 			return
 		}
 		p := principal{}
 		viewer := Viewer{}
 		validViewer := false
-		secureHost := s.canonical(a).Scheme == "https" || !strings.EqualFold(r.Host, s.canonical(a).Host)
-		if c, e := r.Cookie(viewerCookieName(secureHost)); e == nil {
-			if v, exists := s.st.Viewers[digest(c.Value)]; exists && v.Host == strings.ToLower(r.Host) && v.ArtifactID == a.ID {
-				p, validViewer = s.viewerPrincipal(v)
-				viewer = v
+		secureHost := s.contentSecure(a, r.Host)
+		cookieNames := []string{}
+		if strings.HasPrefix(r.URL.Path, "/render/") {
+			parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/render/"), "/", 3)
+			if len(parts) == 3 && parts[0] == a.ID {
+				cookieNames = append(cookieNames, viewerVersionCookieName(secureHost, parts[1]))
 			}
 		}
+		cookieNames = append(cookieNames, viewerCookieName(secureHost))
+		for _, name := range cookieNames {
+			if len(r.CookiesNamed(name)) != 1 {
+				continue
+			}
+			if c, e := r.Cookie(name); e == nil {
+				if v, exists := s.st.Viewers[digest(c.Value)]; exists && v.Host == strings.ToLower(r.Host) && v.ArtifactID == a.ID {
+					p, validViewer = s.viewerPrincipal(v)
+					if validViewer {
+						viewer = v
+						break
+					}
+				}
+			}
+		}
+
 		if !s.read(principal{}, a) {
 			if !validViewer || !s.read(p, a) {
 				if r.URL.Path == "/" {
@@ -182,11 +272,15 @@ func (s *Server) ContentHandler() http.Handler {
 				return
 			}
 		}
-		versionID := ""
+		versionID := boundVersion
 		filePath := strings.TrimPrefix(r.URL.Path, "/")
 		if strings.HasPrefix(r.URL.Path, "/render/") {
 			parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/render/"), "/", 3)
 			if len(parts) != 3 || parts[0] != a.ID {
+				http.NotFound(w, r)
+				return
+			}
+			if boundVersion != "" && parts[1] != boundVersion {
 				http.NotFound(w, r)
 				return
 			}
@@ -203,15 +297,19 @@ func (s *Server) ContentHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		if versionID == "" && validViewer {
-			versionID = viewer.VersionID
+		if versionID == "" {
+			if validViewer {
+				versionID = viewer.VersionID
+			} else {
+				versionID = s.effectiveVersionID(principal{}, a)
+			}
 		}
 		v, exists := s.version(a, versionID)
-		if !exists {
+		if !exists || (!s.readVersion(principal{}, a, v) && (!validViewer || !s.readVersion(p, a, v))) {
 			http.NotFound(w, r)
 			return
 		}
-		if validViewer && viewer.VersionID != v.ID && !s.read(principal{}, a) {
+		if validViewer && viewer.VersionID != v.ID && !s.readVersion(principal{}, a, v) {
 			http.NotFound(w, r)
 			return
 		}
@@ -251,4 +349,15 @@ func viewerCookieName(secure bool) string {
 		return "__Host-folio_viewer"
 	}
 	return "folio_viewer"
+}
+
+func viewerVersionCookieName(secure bool, versionID string) string {
+	return viewerCookieName(secure) + "_v" + digest(versionID)[:16]
+}
+
+func (s *Server) contentSecure(a Artifact, host string) bool {
+	if v := s.versionForHost(a, host); v != "" {
+		return s.canonicalVersion(a, v).Scheme == "https"
+	}
+	return s.canonical(a).Scheme == "https" || !strings.EqualFold(host, s.canonical(a).Host)
 }
