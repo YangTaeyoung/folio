@@ -22,7 +22,9 @@ func searchableFile(f File) bool {
 }
 func visibleText(raw []byte, isHTML bool) string {
 	if !utf8.Valid(raw) {
-		return ""
+		// A byte-limited source may end inside a multi-byte character. Keep the
+		// valid source prefix instead of discarding every preceding word.
+		raw = []byte(strings.ToValidUTF8(string(raw), ""))
 	}
 	if !isHTML {
 		return strings.Join(strings.Fields(string(raw)), " ")

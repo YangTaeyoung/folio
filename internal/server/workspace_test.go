@@ -165,3 +165,13 @@ func TestSearchHTMLSkipsExecutableCodeAndUnicode(t *testing.T) {
 		t.Fatal(text)
 	}
 }
+
+func TestSearchByteLimitPreservesMultilingualPrefix(t *testing.T) {
+	raw := append([]byte("Searchable 日本語 Français "), []byte{0xe4, 0xb8}...)
+	for _, isHTML := range []bool{false, true} {
+		got := visibleText(raw, isHTML)
+		if !strings.Contains(got, "日本語") || !strings.Contains(got, "Français") {
+			t.Fatalf("truncated UTF-8 discarded searchable prefix: %q", got)
+		}
+	}
+}
