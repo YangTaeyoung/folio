@@ -14,7 +14,24 @@ export interface Organization {
   id: string;
   name: string;
 }
+export interface Provenance {
+  agent?: string;
+  model?: string;
+  summary?: string;
+  repository?: string;
+  commit?: string;
+  taskUrl?: string;
+  sources?: string[];
+}
 export interface Artifact {
+  reviewEnabled?: boolean;
+  reviewerIds?: string[];
+  publishedVersionId?: string;
+  deletedAt?: string;
+  tags?: string[];
+  provenance?: Provenance;
+  favorite?: boolean;
+  searchSnippet?: string;
   id: string;
   slug: string;
   title: string;
@@ -33,6 +50,8 @@ export interface Artifact {
   kind: string;
 }
 export interface Version {
+  published?: boolean;
+  provenance?: Provenance;
   id: string;
   artifactId: string;
   number: number;

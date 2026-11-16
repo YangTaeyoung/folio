@@ -73,32 +73,49 @@ type File struct {
 	Key      string `json:"key,omitempty"`
 }
 type Version struct {
-	ID         string    `json:"id"`
-	ArtifactID string    `json:"artifactId"`
-	Number     int       `json:"number"`
-	CreatedAt  time.Time `json:"createdAt"`
-	SizeBytes  int64     `json:"sizeBytes"`
-	BackendID  string    `json:"backendId"`
-	Files      []File    `json:"files"`
-	Message    string    `json:"message"`
-}
-type Artifact struct {
-	ID               string     `json:"id"`
-	Slug             string     `json:"slug"`
 	Title            string     `json:"title"`
 	Description      string     `json:"description"`
-	OwnerID          string     `json:"ownerId"`
-	OwnerName        string     `json:"ownerName"`
-	Visibility       string     `json:"visibility"`
-	MemberIDs        []string   `json:"memberIds"`
-	Archived         bool       `json:"archived"`
-	ExpiresAt        *time.Time `json:"expiresAt"`
+	Tags             []string   `json:"tags"`
+	MetadataSnapshot bool       `json:"metadataSnapshot,omitempty"`
+	ID               string     `json:"id"`
+	ArtifactID       string     `json:"artifactId"`
+	Number           int        `json:"number"`
 	CreatedAt        time.Time  `json:"createdAt"`
-	UpdatedAt        time.Time  `json:"updatedAt"`
 	SizeBytes        int64      `json:"sizeBytes"`
-	CurrentVersionID string     `json:"currentVersionId"`
-	ShareURL         string     `json:"shareUrl"`
-	Kind             string     `json:"kind"`
+	BackendID        string     `json:"backendId"`
+	Files            []File     `json:"files"`
+	Message          string     `json:"message"`
+	Published        bool       `json:"published"`
+	Provenance       Provenance `json:"provenance"`
+	SearchText       string     `json:"searchText,omitempty"`
+	SearchIndexed    bool       `json:"searchIndexed,omitempty"`
+}
+type Artifact struct {
+	ID                 string     `json:"id"`
+	Slug               string     `json:"slug"`
+	Title              string     `json:"title"`
+	Description        string     `json:"description"`
+	OwnerID            string     `json:"ownerId"`
+	OwnerName          string     `json:"ownerName"`
+	Visibility         string     `json:"visibility"`
+	MemberIDs          []string   `json:"memberIds"`
+	Archived           bool       `json:"archived"`
+	ExpiresAt          *time.Time `json:"expiresAt"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	SizeBytes          int64      `json:"sizeBytes"`
+	CurrentVersionID   string     `json:"currentVersionId"`
+	ShareURL           string     `json:"shareUrl"`
+	Kind               string     `json:"kind"`
+	ReviewEnabled      bool       `json:"reviewEnabled"`
+	PublishedVersionID string     `json:"publishedVersionId"`
+	ReviewerIDs        []string   `json:"reviewerIds"`
+	DeletedAt          *time.Time `json:"deletedAt,omitempty"`
+	DeletedBy          string     `json:"deletedBy,omitempty"`
+	Tags               []string   `json:"tags"`
+	Provenance         Provenance `json:"provenance"`
+	Favorite           bool       `json:"favorite,omitempty"`
+	SearchSnippet      string     `json:"searchSnippet,omitempty"`
 }
 type Session struct {
 	UserID, CSRF string
@@ -121,6 +138,7 @@ type tokenRecord struct {
 }
 type Viewer struct {
 	ArtifactID, VersionID, Host, UserID, Credential, Kind string
+	ViewerDigest                                          string
 	ExpiresAt                                             time.Time
 }
 type Backend struct {
@@ -174,6 +192,12 @@ type state struct {
 	GoogleAuth          googleAuthConfig
 	GoogleSubjects      map[string]string
 	GoogleHostedDomains map[string]string
+	Collections         map[string]Collection
+	Favorites           map[string]map[string]bool
+	Reviews             map[string]Review
+	Comments            map[string]Comment
+	GuestLinks          map[string]GuestLink
+	GuestSessions       map[string]GuestSession
 }
 type Server struct {
 	mu              sync.Mutex
@@ -206,6 +230,7 @@ type principal struct {
 	user             *User
 	credential, kind string
 	scopes           []string
+	guestLinkID      string
 }
 type apiError struct {
 	status    int
@@ -306,6 +331,7 @@ func New(c Config) (*Server, error) {
 		db.Close()
 		return nil, e
 	}
+	s.initFeatureState()
 	if len(s.st.Users) == 0 && s.bootstrap == "" {
 		p := filepath.Join(c.DataDir, "bootstrap.token")
 		v, e := os.ReadFile(p)
@@ -489,6 +515,8 @@ func contains(v []string, w string) bool {
 	return false
 }
 func (s *Server) publicVersion(v Version) Version {
+	v.SearchText = ""
+	v.SearchIndexed = false
 	v.Files = append([]File(nil), v.Files...)
 	for i := range v.Files {
 		v.Files[i].Key = ""
@@ -504,10 +532,19 @@ func (s *Server) publicArtifact(a Artifact) Artifact {
 	return a
 }
 func (s *Server) read(p principal, a Artifact) bool {
+	if a.DeletedAt != nil {
+		return false
+	}
+	if p.kind == "guest" {
+		return s.guestCanRead(p, a, s.st.GuestLinks[p.guestLinkID].VersionID)
+	}
 	if p.user != nil && (p.user.Role == "admin" || a.OwnerID == p.user.ID) {
 		return true
 	}
 	if a.ExpiresAt != nil && !a.ExpiresAt.After(now()) {
+		return false
+	}
+	if a.ReviewEnabled && a.PublishedVersionID == "" && !s.draftReviewer(p, a) {
 		return false
 	}
 	if a.Visibility == "public" {
@@ -553,7 +590,7 @@ func (s *Server) principal(r *http.Request) principal {
 					t.LastUsedAt = &used
 					s.st.Tokens[id] = t
 					s.save()
-					return principal{&u.User, hash, "token", t.Scopes}
+					return principal{user: &u.User, credential: hash, kind: "token", scopes: t.Scopes}
 				}
 			}
 		}
@@ -575,7 +612,7 @@ func (s *Server) principal(r *http.Request) principal {
 	if !ok || u.Disabled {
 		return principal{}
 	}
-	return principal{&u.User, hash, "session", nil}
+	return principal{user: &u.User, credential: hash, kind: "session"}
 }
 func (s *Server) require(r *http.Request, p principal, admin bool, scope string) error {
 	if p.user == nil {
@@ -621,7 +658,7 @@ func (s *Server) Handler() http.Handler {
 			return
 		}
 		p := s.principal(r)
-		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
+		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" && !strings.HasPrefix(r.URL.Path, "/api/guest/") {
 			if e := s.csrf(r, p); e != nil {
 				errorJSON(w, e)
 				return
@@ -648,7 +685,7 @@ func (s *Server) web(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, "/")
-	if name == "" || strings.HasPrefix(name, "s/") {
+	if name == "" || strings.HasPrefix(name, "s/") || strings.HasPrefix(name, "g/") {
 		name = "index.html"
 	}
 	raw, e := fs.ReadFile(s.cfg.WebFS, name)
@@ -657,6 +694,7 @@ func (s *Server) web(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
+		name = "index.html"
 		raw, e = fs.ReadFile(s.cfg.WebFS, "index.html")
 	}
 	if e != nil {

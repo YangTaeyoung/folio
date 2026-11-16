@@ -205,7 +205,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 		writeJSON(w, 200, out)
 		return nil
 	case path == "/api/capabilities" && r.Method == "GET":
-		writeJSON(w, 200, map[string]any{"version": s.cfg.Version, "offline": true, "maxUploadBytes": s.st.Policy.MaxUploadBytes, "maxFiles": 2500, "shareModes": []string{"private", "organization", "selected", "public"}, "apiUrl": s.cfg.AppURL + "/api", "cli": map[string]string{"command": "folio", "mcp": "folio mcp", "skill": "folio skills install"}})
+		writeJSON(w, 200, map[string]any{"version": s.cfg.Version, "offline": true, "features": []string{"reviews", "drafts", "collections", "version-diff", "body-search", "provenance", "trash", "portable-backup", "guest-links", "i18n"}, "locales": []string{"ko", "en", "ja", "zh-CN", "fr"}, "tokenScopes": []string{"read", "publish", "share", "review"}, "maxUploadBytes": s.st.Policy.MaxUploadBytes, "maxFiles": 2500, "shareModes": []string{"private", "organization", "selected", "public"}, "apiUrl": s.cfg.AppURL + "/api", "cli": map[string]string{"command": "folio", "mcp": "folio mcp", "skill": "folio skills install"}})
 		return nil
 	case path == "/api/members" && r.Method == "GET":
 		if e := s.require(r, p, false, "read"); e != nil {
@@ -260,6 +260,14 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 		}
 		writeJSON(w, 200, out)
 		return nil
+	case path == "/api/collections" || strings.HasPrefix(path, "/api/collections/"):
+		return s.collections(w, r, p)
+	case path == "/api/trash" || strings.HasPrefix(path, "/api/trash/"):
+		return s.lifecycle(w, r, p)
+	case path == "/api/backups" || strings.HasPrefix(path, "/api/backups/"):
+		return s.backups(w, r, p)
+	case strings.HasPrefix(path, "/api/guest/"):
+		return s.guest(w, r)
 	case path == "/api/tokens" || strings.HasPrefix(path, "/api/tokens/"):
 		return s.tokens(w, r, p)
 	case path == "/api/storage" || strings.HasPrefix(path, "/api/storage/"):
@@ -490,7 +498,7 @@ func (s *Server) tokens(w http.ResponseWriter, r *http.Request, p principal) err
 			return fail(400, "required_field", "Name and scopes are required")
 		}
 		for _, v := range in.Scopes {
-			if v != "read" && v != "publish" && v != "share" {
+			if v != "read" && v != "publish" && v != "share" && v != "review" {
 				return fail(400, "invalid_scope", "Unknown token scope")
 			}
 		}

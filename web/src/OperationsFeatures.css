@@ -1,0 +1,237 @@
+.ops-section {
+  min-width: 0;
+  padding: 24px 0;
+  border-top: 1px solid var(--line, #e2e4e9);
+}
+.ops-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.ops-heading h2,
+.ops-heading h3 {
+  margin: 0 0 7px;
+}
+.ops-heading p,
+.ops-restore p {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--muted, #626976);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.ops-form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+.ops-form > .button {
+  justify-self: start;
+}
+.ops-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+}
+.ops-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line, #e2e4e9);
+}
+.ops-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.ops-item-main strong,
+.ops-item-main span {
+  overflow-wrap: anywhere;
+}
+.ops-item-main span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ops-item-main small,
+.ops-guest-gate small {
+  color: var(--muted, #626976);
+}
+.ops-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ops-warning {
+  font-size: 13px;
+  color: var(--danger, #bd3038);
+}
+.ops-empty {
+  padding: 64px 16px;
+  text-align: center;
+  color: var(--muted, #626976);
+}
+.ops-empty > svg {
+  margin-bottom: 8px;
+}
+.ops-empty h3 {
+  color: var(--ink, #18191c);
+  font-size: 17px;
+}
+.ops-empty p {
+  font-size: 14px;
+}
+.ops-restore {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line, #e2e4e9);
+}
+.ops-restore h3 {
+  margin: 0 0 8px;
+}
+.ops-restore p + p {
+  margin-top: 8px;
+}
+.ops-restore form {
+  margin-top: 20px;
+}
+.ops-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ops-check input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin: 2px 0;
+}
+.ops-notice {
+  color: var(--accent, #2258e8);
+  font-size: 14px;
+}
+.ops-guest {
+  min-height: 100dvh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ops-guest > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--line, #e2e4e9);
+  padding-bottom: 20px;
+}
+.ops-guest > header > span {
+  font-size: 13px;
+  color: var(--muted, #626976);
+}
+.ops-wordmark {
+  font-size: 24px;
+  font-weight: 750;
+  color: var(--ink, #18191c);
+  text-decoration: none;
+}
+.ops-guest-gate {
+  width: min(100%, 400px);
+  margin: clamp(40px, 12vh, 140px) auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ops-guest-gate > svg {
+  color: var(--accent, #2258e8);
+}
+.ops-guest-gate h1 {
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.ops-guest-gate p {
+  margin: 0;
+  color: var(--muted, #626976);
+  line-height: 1.6;
+}
+.ops-guest-gate form {
+  display: grid;
+  gap: 18px;
+}
+.ops-guest-gate form > .button {
+  justify-content: center;
+}
+.ops-guest-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ops-guest-toolbar strong {
+  overflow-wrap: anywhere;
+}
+.ops-guest iframe {
+  width: 100%;
+  flex: 1;
+  min-height: 70dvh;
+  border: 1px solid var(--line, #e2e4e9);
+  border-radius: 6px;
+}
+.ops-section input[type="file"] {
+  max-width: 100%;
+  padding: 8px;
+  white-space: normal;
+}
+.ops-guest-open {
+  height: 100dvh;
+}
+@media (max-width: 680px) {
+  .ops-section {
+    padding: 20px 0;
+  }
+  .ops-list > li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ops-actions {
+    justify-content: flex-start;
+    flex-shrink: 1;
+  }
+  .ops-form {
+    max-width: none;
+  }
+  .ops-guest {
+    padding: 20px 16px;
+  }
+  .ops-guest > header {
+    gap: 10px;
+  }
+  .ops-guest > header > span {
+    max-width: 55%;
+    text-align: right;
+  }
+  .ops-guest-toolbar {
+    align-items: flex-start;
+  }
+  .ops-guest-toolbar > .button {
+    flex-shrink: 0;
+  }
+  .ops-guest iframe {
+    min-height: 65dvh;
+  }
+}

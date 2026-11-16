@@ -95,7 +95,7 @@ func TestMCPStdioProcess(t *testing.T) {
 	}
 	defer session.Close()
 	tools, e := session.ListTools(ctx, nil)
-	if e != nil || len(tools.Tools) < 9 {
+	if e != nil || len(tools.Tools) < 23 {
 		t.Fatalf("list tools: %v %+v", e, tools)
 	}
 	resources, e := session.ListResources(ctx, nil)
@@ -138,6 +138,41 @@ func TestMCPStdioProcess(t *testing.T) {
 	if updated["version"].(map[string]any)["number"] != float64(2) {
 		t.Fatal("revision not published")
 	}
+
+	official := updated["version"].(map[string]any)["id"].(string)
+	os.WriteFile(filepath.Join(site, "index.html"), []byte("<h1>Revised text for review</h1>"), 0600)
+	draft := call("folio_publish", PublishInput{Path: site, ArtifactID: id, BaseVersionID: official, Draft: true, Provenance: &CreationContext{Agent: "test agent", Summary: "Explicit request summary"}})
+	vid := draft["version"].(map[string]any)["id"].(string)
+	if draft["artifact"].(map[string]any)["publishedVersionId"] != official {
+		t.Fatal("draft changed official link")
+	}
+	comment := call("folio_comment", CommentInput{ID: id, VersionID: vid, Body: "Human fixture requests spacing correction"})
+	cid := comment["comment"].(map[string]any)["id"].(string)
+	feedback := call("folio_feedback", FeedbackInput{ID: id, VersionID: vid})
+	if len(feedback["comments"].([]any)) != 1 {
+		t.Fatal("feedback missing")
+	}
+	call("folio_resolve_thread", ResolveInput{ID: id, CommentID: cid, Resolved: true})
+	call("folio_review", ReviewInput{ID: id, VersionID: vid, Status: "in_review"})
+	// Explicit approval fixture; the workflow tells real agents never to invent this decision.
+	call("folio_review", ReviewInput{ID: id, VersionID: vid, Status: "approved"})
+	promoted := call("folio_promote", PromoteInput{ID: id, VersionID: vid, BasePublishedVersionID: official})
+	if promoted["artifact"].(map[string]any)["publishedVersionId"] != vid {
+		t.Fatal("promotion missing")
+	}
+	diff := call("folio_compare_versions", DiffInput{ID: id, From: official, To: vid, Path: "index.html"})
+	if diff["summary"].(map[string]any)["modified"] != float64(1) {
+		t.Fatal("real comparison missing")
+	}
+	call("folio_save_collection", CollectionInput{Name: "MCP project", Visibility: "organization", ArtifactIDs: []string{id}})
+	if len(call("folio_collections", Empty{})["collections"].([]any)) != 1 {
+		t.Fatal("collection missing")
+	}
+	guest := call("folio_create_guest_link", GuestInput{ID: id, VersionID: vid, ExpiresAt: time.Now().Add(time.Hour).UTC().Format(time.RFC3339), Password: "guest-test-password"})
+	gid := guest["guestLink"].(map[string]any)["id"].(string)
+	call("folio_revoke_guest_link", GuestRevokeInput{ID: id, LinkID: gid})
+	call("folio_trash", TrashInput{ID: id, Action: "trash"})
+	call("folio_trash", TrashInput{ID: id, Action: "restore"})
 }
 func TestMCPHelperProcess(t *testing.T) {
 	if os.Getenv("FOLIO_MCP_HELPER") != "1" {

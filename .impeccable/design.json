@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T18:12:34.443116+00:00",
+  "generatedAt": "2026-11-16T16:27:13.857822+00:00",
   "title": "Design System: Folio",
   "extensions": {
     "colorMeta": {
@@ -269,6 +269,104 @@
           "oklch(84% 0.17717 22.85)",
           "oklch(95% 0.17717 22.85)"
         ]
+      },
+      "status-success": {
+        "role": "semantic",
+        "displayName": "Success Green",
+        "tonalRamp": [
+          "oklch(15% 0.09807 153.72)",
+          "oklch(26% 0.09807 153.72)",
+          "oklch(38% 0.09807 153.72)",
+          "oklch(49% 0.09807 153.72)",
+          "oklch(61% 0.09807 153.72)",
+          "oklch(72% 0.09807 153.72)",
+          "oklch(84% 0.09807 153.72)",
+          "oklch(95% 0.09807 153.72)"
+        ]
+      },
+      "review-changes": {
+        "role": "semantic",
+        "displayName": "Revision Amber",
+        "tonalRamp": [
+          "oklch(15% 0.13280 35.68)",
+          "oklch(26% 0.13280 35.68)",
+          "oklch(38% 0.13280 35.68)",
+          "oklch(49% 0.13280 35.68)",
+          "oklch(61% 0.13280 35.68)",
+          "oklch(72% 0.13280 35.68)",
+          "oklch(84% 0.13280 35.68)",
+          "oklch(95% 0.13280 35.68)"
+        ]
+      },
+      "review-changes-background": {
+        "role": "semantic",
+        "displayName": "Revision Wash",
+        "tonalRamp": [
+          "oklch(15% 0.01256 56.26)",
+          "oklch(26% 0.01256 56.26)",
+          "oklch(38% 0.01256 56.26)",
+          "oklch(49% 0.01256 56.26)",
+          "oklch(61% 0.01256 56.26)",
+          "oklch(72% 0.01256 56.26)",
+          "oklch(84% 0.01256 56.26)",
+          "oklch(95% 0.01256 56.26)"
+        ]
+      },
+      "diff-added-background": {
+        "role": "semantic",
+        "displayName": "Added Code Wash",
+        "tonalRamp": [
+          "oklch(15% 0.02148 158.59)",
+          "oklch(26% 0.02148 158.59)",
+          "oklch(38% 0.02148 158.59)",
+          "oklch(49% 0.02148 158.59)",
+          "oklch(61% 0.02148 158.59)",
+          "oklch(72% 0.02148 158.59)",
+          "oklch(84% 0.02148 158.59)",
+          "oklch(95% 0.02148 158.59)"
+        ]
+      },
+      "diff-added-text": {
+        "role": "semantic",
+        "displayName": "Added Code Text",
+        "tonalRamp": [
+          "oklch(15% 0.08737 153.28)",
+          "oklch(26% 0.08737 153.28)",
+          "oklch(38% 0.08737 153.28)",
+          "oklch(49% 0.08737 153.28)",
+          "oklch(61% 0.08737 153.28)",
+          "oklch(72% 0.08737 153.28)",
+          "oklch(84% 0.08737 153.28)",
+          "oklch(95% 0.08737 153.28)"
+        ]
+      },
+      "diff-removed-background": {
+        "role": "semantic",
+        "displayName": "Removed Code Wash",
+        "tonalRamp": [
+          "oklch(15% 0.02525 14.60)",
+          "oklch(26% 0.02525 14.60)",
+          "oklch(38% 0.02525 14.60)",
+          "oklch(49% 0.02525 14.60)",
+          "oklch(61% 0.02525 14.60)",
+          "oklch(72% 0.02525 14.60)",
+          "oklch(84% 0.02525 14.60)",
+          "oklch(95% 0.02525 14.60)"
+        ]
+      },
+      "diff-removed-text": {
+        "role": "semantic",
+        "displayName": "Removed Code Text",
+        "tonalRamp": [
+          "oklch(15% 0.15447 22.54)",
+          "oklch(26% 0.15447 22.54)",
+          "oklch(38% 0.15447 22.54)",
+          "oklch(49% 0.15447 22.54)",
+          "oklch(61% 0.15447 22.54)",
+          "oklch(72% 0.15447 22.54)",
+          "oklch(84% 0.15447 22.54)",
+          "oklch(95% 0.15447 22.54)"
+        ]
       }
     },
     "typographyMeta": {
@@ -311,6 +409,14 @@
       "admin-section-title": {
         "displayName": "Administrative Section Title",
         "purpose": "Flat administrative section headings."
+      },
+      "language-label": {
+        "displayName": "Language Label",
+        "purpose": "Native language picker on desktop."
+      },
+      "language-label-mobile": {
+        "displayName": "Compact-screen Language Label",
+        "purpose": "Native language picker up to 760px."
       }
     },
     "shadows": [
@@ -403,6 +509,14 @@
       {
         "name": "wide-auth-min",
         "value": "1700px"
+      },
+      {
+        "name": "paired-fields-stack-max",
+        "value": "500px"
+      },
+      {
+        "name": "operations-stack-max",
+        "value": "680px"
       }
     ]
   },
@@ -476,6 +590,14 @@
       "description": "Native progressive setup guidance in a flat section.",
       "html": "<details class=\"ds-admin-disclosure\"><summary><span>설치 정보</span><small>관리 주소와 콘텐츠 호스트</small></summary><div>현재 설치의 연결 정보를 확인합니다.</div></details>",
       "css": ".ds-admin-disclosure{font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif;max-width:600px;color:var(--ink,#18191c);border-top:1px solid var(--line,#e2e4e9)}.ds-admin-disclosure>summary{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:8px 22px;padding:21px 24px 21px 0;list-style:none;cursor:pointer;font-size:15px;font-weight:600}.ds-admin-disclosure>summary::-webkit-details-marker{display:none}.ds-admin-disclosure>summary::after{content:\"+\";position:absolute;right:2px;top:20px;color:var(--muted,#626976);font-size:19px;font-weight:400;line-height:20px}.ds-admin-disclosure[open]>summary::after{content:\"−\"}.ds-admin-disclosure small{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted,#626976)}.ds-admin-disclosure>summary:hover{color:var(--ink,#18191c)}.ds-admin-disclosure>summary:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}.ds-admin-disclosure>div{padding:1px 0 26px;font-size:13px;color:var(--muted,#626976);line-height:1.7}"
+    },
+    {
+      "name": "Language Picker",
+      "kind": "input",
+      "refersTo": "language-picker",
+      "description": "Native select with self-named locales, a language icon and shared focus; used in authentication, workspace and guest chrome.",
+      "html": "<label class=\"ds-language\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"m5 8 6 6m-7 0 6-6 2-3H2m5-3h1m14 20-5-11-5 11m2-4h6\"/></svg><select aria-label=\"Language\"><option lang=\"ko\" value=\"ko\">한국어</option><option lang=\"en\" value=\"en\">English</option><option lang=\"ja\" value=\"ja\">日本語</option><option lang=\"zh-CN\" value=\"zh-CN\">简体中文</option><option lang=\"fr\" value=\"fr\">Français</option></select></label>",
+      "css": ".ds-language{display:inline-flex;align-items:center;gap:6px;color:var(--muted,#626976);min-width:0;max-width:100%;font-family:Pretendard,-apple-system,BlinkMacSystemFont,\"Apple SD Gothic Neo\",system-ui,sans-serif}.ds-language select{font:inherit;font-size:12px;line-height:1.5;width:auto;min-height:36px;max-width:100%;padding:6px 22px 6px 7px;background-color:transparent;border:1px solid var(--line,#e2e4e9);border-radius:7px;color:var(--ink,#18191c);cursor:pointer}.ds-language select:focus-visible{outline:2px solid var(--accent,#2258e8);outline-offset:3px}@media(max-width:760px){.ds-language select{font-size:16px}}"
     }
   ],
   "narrative": {
@@ -486,7 +608,7 @@
       "Compact, preview-led browsing with contextual sharing and explicit access.",
       "A broad reading plane with a separate metadata aside.",
       "Flat, aligned administration and progressive setup guidance.",
-      "Local typography and brand assets; direct Korean task labels."
+      "Local typography and brand assets; direct task labels across five interface languages."
     ],
     "rules": [
       {
@@ -511,7 +633,8 @@
       "**Do** keep owner, modification time, audience and contextual sharing close to each artifact.",
       "**Do** give reading content the broad canvas and keep metadata contextual.",
       "**Do** use flat aligned administrative sections and progressively disclosed setup guidance.",
-      "**Do** keep local fonts/assets, visible focus, honest states and the existing authorization controls."
+      "**Do** keep local fonts/assets, visible focus, honest states and the existing authorization controls.",
+      "**Do** preserve explicit version, review and access labels, and let translated controls wrap or scroll within their region."
     ],
     "donts": [
       "**Don't** restore the rejected sage/ivory, serif, bookish visual world or poetic library labels.",
@@ -519,7 +642,8 @@
       "**Don't** restore repeated open/share tile footers or make a thumbnail viewport change with library view mode.",
       "**Don't** substitute fabricated activity, customers, usage or health metrics for actual state.",
       "**Don't** express sharing scope through color alone or imply that copying a link saves draft permissions.",
-      "**Don't** treat uploaded artifacts, research references or example-tour styling as shell design tokens."
+      "**Don't** treat uploaded artifacts, research references or example-tour styling as shell design tokens.",
+      "**Don't** turn operational screens into a marketing landing page or replace real task content with decorative cards."
     ]
   }
 }

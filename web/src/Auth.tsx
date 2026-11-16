@@ -1,3 +1,5 @@
+import { t as translate, useLocale } from "./i18n";
+import { LanguageSelector } from "./LanguageSelector";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { api, json, setCSRF } from "./api";
@@ -5,6 +7,7 @@ import type { Session } from "./types";
 import { ErrorBox, Field, Spinner, useAction } from "./ui";
 import "./AuthSurface.css";
 export function Brand() {
+  useLocale();
   return (
     <span className="brand">
       <img src="/favicon.svg" alt="" />
@@ -19,6 +22,7 @@ export default function Auth({
   setup: boolean;
   onLogin: (s: Session) => void;
 }) {
+  useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +34,9 @@ export default function Auth({
   const action = useAction();
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const authError = new URLSearchParams(location.search).has("auth_error")
-    ? "Google 로그인에 실패했습니다. 등록된 계정인지 확인하거나 관리자에게 문의하세요."
+    ? translate(
+        "Google 로그인에 실패했습니다. 등록된 계정인지 확인하거나 관리자에게 문의하세요.",
+      )
     : "";
   useEffect(() => {
     api<{ google: { enabled: boolean } }>("/api/auth/providers")
@@ -43,6 +49,7 @@ export default function Auth({
     >
       <header className="auth-header">
         <Brand />
+        <LanguageSelector />
       </header>
       <div className="auth-layout">
         {!setup && (
@@ -52,14 +59,14 @@ export default function Auth({
           >
             <div className="auth-brand-copy">
               <h1 id="auth-brand-title">
-                만든 결과물을
+                {translate("만든 결과물을")}
                 <br />
-                함께 쓰는 공간.
+                {translate("함께 쓰는 공간.")}
               </h1>
               <p>
-                문서, 프로토타입, 작은 웹앱까지.
+                {translate("문서, 프로토타입, 작은 웹앱까지.")}
                 <br />
-                한곳에 모으고 필요한 사람과 공유하세요.
+                {translate("한곳에 모으고 필요한 사람과 공유하세요.")}
               </p>
             </div>
             <img
@@ -71,7 +78,7 @@ export default function Auth({
               fetchPriority="high"
             />
             <p className="auth-brand-note">
-              내 서버에 보관하고, 공유 범위는 직접 설정하세요.
+              {translate("내 서버에 보관하고, 공유 범위는 직접 설정하세요.")}
             </p>
           </section>
         )}
@@ -95,11 +102,15 @@ export default function Auth({
               });
             }}
           >
-            <h2>{setup ? "작업 공간 만들기" : "작업 공간에 로그인"}</h2>
+            <h2>
+              {setup
+                ? translate("작업 공간 만들기")
+                : translate("작업 공간에 로그인")}
+            </h2>
             <p className="subtle">
               {setup
-                ? "조직과 첫 관리자 계정을 설정하세요."
-                : "이메일과 비밀번호로 작업 공간에 접속하세요."}
+                ? translate("조직과 첫 관리자 계정을 설정하세요.")
+                : translate("이메일과 비밀번호로 작업 공간에 접속하세요.")}
             </p>
             <ErrorBox error={authError} />
             {!setup && googleEnabled && (
@@ -111,18 +122,20 @@ export default function Auth({
                   <span className="google-logo-window">
                     <img src="/images/google-signin-icon.png" alt="" />
                   </span>
-                  Google로 로그인
+                  {translate("Google로 로그인")}
                 </a>
                 <div className="auth-divider">
-                  <span>또는 이메일로 로그인</span>
+                  <span>{translate("또는 이메일로 로그인")}</span>
                 </div>
               </>
             )}
             {setup && (
               <>
                 <Field
-                  label="설치 키"
-                  hint="서버 설치 시 표시된 일회용 설치 키를 입력하세요."
+                  label={translate("설치 키")}
+                  hint={translate(
+                    "서버 설치 시 표시된 일회용 설치 키를 입력하세요.",
+                  )}
                 >
                   <input
                     required
@@ -132,15 +145,15 @@ export default function Auth({
                     autoComplete="off"
                   />
                 </Field>
-                <Field label="조직 이름">
+                <Field label={translate("조직 이름")}>
                   <input
                     required
                     value={org}
                     onChange={(e) => setOrg(e.target.value)}
-                    placeholder="예: Melona"
+                    placeholder={translate("예: Melona")}
                   />
                 </Field>
-                <Field label="이름">
+                <Field label={translate("이름")}>
                   <input
                     required
                     value={name}
@@ -150,7 +163,7 @@ export default function Auth({
                 </Field>
               </>
             )}
-            <Field label="이메일">
+            <Field label={translate("이메일")}>
               <input
                 required
                 type="email"
@@ -161,7 +174,7 @@ export default function Auth({
               />
             </Field>
             <div className="field auth-password-field">
-              <label htmlFor="auth-password">비밀번호</label>
+              <label htmlFor="auth-password">{translate("비밀번호")}</label>
               <div className="auth-password-input">
                 <input
                   id="auth-password"
@@ -177,7 +190,9 @@ export default function Auth({
                   type="button"
                   className="icon-button"
                   aria-label={
-                    showPassword ? "비밀번호 숨기기" : "비밀번호 표시"
+                    showPassword
+                      ? translate("비밀번호 숨기기")
+                      : translate("비밀번호 표시")
                   }
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword((value) => !value)}
@@ -187,7 +202,7 @@ export default function Auth({
               </div>
               {setup && (
                 <small id="auth-password-hint">
-                  12자 이상으로 설정해 주세요.
+                  {translate("12자 이상으로 설정해 주세요.")}
                 </small>
               )}
             </div>
@@ -199,20 +214,24 @@ export default function Auth({
               {action.busy ? (
                 <Spinner />
               ) : setup ? (
-                "작업 공간 만들기"
+                translate("작업 공간 만들기")
               ) : (
-                "로그인"
+                translate("로그인")
               )}
             </button>
             {!setup && (
               <div className="auth-account-help">
-                <p>조직 관리자가 생성한 계정으로 로그인할 수 있습니다.</p>
+                <p>
+                  {translate(
+                    "조직 관리자가 생성한 계정으로 로그인할 수 있습니다.",
+                  )}
+                </p>
                 <details>
-                  <summary>계정 도움말</summary>
+                  <summary>{translate("계정 도움말")}</summary>
                   <p>
-                    계정이 없거나 비밀번호를 잊으셨다면 조직 관리자에게
-                    문의하세요. 관리자가 계정을 생성하거나 비밀번호를 초기화할
-                    수 있습니다.
+                    {translate(
+                      "계정이 없거나 비밀번호를 잊으셨다면 조직 관리자에게 문의하세요. 관리자가 계정을 생성하거나 비밀번호를 초기화할 수 있습니다.",
+                    )}
                   </p>
                 </details>
               </div>
@@ -228,19 +247,21 @@ export function PasswordChange({
 }: {
   onChanged: (s: Partial<Session>) => void;
 }) {
+  useLocale();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const a = useAction();
   return (
     <div className="password-gate">
+      <LanguageSelector />
       <form
         className="panel narrow"
         onSubmit={(e) => {
           e.preventDefault();
           void a.run(async () => {
             if (next !== confirm)
-              throw new Error("새 비밀번호가 일치하지 않습니다.");
+              throw new Error(translate("새 비밀번호가 일치하지 않습니다."));
             const s = await api<Partial<Session>>(
               "/api/auth/password",
               json("POST", { currentPassword: current, newPassword: next }),
@@ -251,9 +272,11 @@ export function PasswordChange({
         }}
       >
         <KeyRound size={28} />
-        <h1>나만의 비밀번호로 바꿔주세요</h1>
-        <p className="subtle">처음 로그인할 때 임시 비밀번호를 변경합니다.</p>
-        <Field label="임시 비밀번호">
+        <h1>{translate("나만의 비밀번호로 바꿔주세요")}</h1>
+        <p className="subtle">
+          {translate("처음 로그인할 때 임시 비밀번호를 변경합니다.")}
+        </p>
+        <Field label={translate("임시 비밀번호")}>
           <input
             required
             type="password"
@@ -262,7 +285,7 @@ export function PasswordChange({
             autoComplete="current-password"
           />
         </Field>
-        <Field label="새 비밀번호 · 12자 이상">
+        <Field label={translate("새 비밀번호 · 12자 이상")}>
           <input
             required
             type="password"
@@ -272,7 +295,7 @@ export function PasswordChange({
             autoComplete="new-password"
           />
         </Field>
-        <Field label="새 비밀번호 확인">
+        <Field label={translate("새 비밀번호 확인")}>
           <input
             required
             type="password"
@@ -284,7 +307,7 @@ export function PasswordChange({
         </Field>
         <ErrorBox error={a.error} />
         <button className="button primary" disabled={a.busy}>
-          {a.busy ? <Spinner /> : "변경하고 시작하기"}
+          {a.busy ? <Spinner /> : translate("변경하고 시작하기")}
         </button>
       </form>
     </div>
