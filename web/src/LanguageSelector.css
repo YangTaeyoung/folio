@@ -6,7 +6,7 @@
   min-width: 0;
   max-width: 100%;
 }
-.language-selector select {
+.language-selector :is(select, .select-control) {
   width: auto;
   min-height: 36px;
   max-width: 100%;
@@ -33,7 +33,7 @@
   flex-wrap: wrap;
 }
 @media (max-width: 760px) {
-  .language-selector select {
+  .language-selector :is(select, .select-control) {
     font-size: 16px;
   }
 }

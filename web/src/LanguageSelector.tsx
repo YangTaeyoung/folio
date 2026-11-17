@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { Languages } from "lucide-react";
 import {
   isLocale,
@@ -13,11 +14,11 @@ export function LanguageSelector() {
   return (
     <label className="language-selector">
       <Languages size={16} aria-hidden="true" />
-      <select
+      <Select
         aria-label={t("언어")}
         value={locale}
-        onChange={(event) => {
-          if (isLocale(event.target.value)) setLocale(event.target.value);
+        onValueChange={(value) => {
+          if (isLocale(value)) setLocale(value);
         }}
       >
         {locales.map((value) => (
@@ -25,7 +26,7 @@ export function LanguageSelector() {
             {localeNames[value]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

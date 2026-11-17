@@ -439,6 +439,9 @@ func (s *Server) restoreBackup(ctx context.Context, src io.Reader, password stri
 	if e = json.Unmarshal(manifest.State, &imported); e != nil {
 		return e
 	}
+	if e = normalizeBackupPhotos(&imported); e != nil {
+		return e
+	}
 	if e = validateBackupState(imported, manifest); e != nil {
 		return e
 	}
@@ -497,6 +500,9 @@ func (s *Server) restoreBackup(ctx context.Context, src io.Reader, password stri
 		imported.Users = map[string]userRecord{}
 	}
 	if e := mergeRestoreIdentities(&imported, s.st.Users); e != nil {
+		return e
+	}
+	if e := validatePhotoStateSize(imported); e != nil {
 		return e
 	}
 	imported.Sessions = s.st.Sessions

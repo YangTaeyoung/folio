@@ -13,6 +13,7 @@ import socket
 import subprocess
 import tempfile
 import time
+from browser_controls import choose as select_value
 from playwright.sync_api import sync_playwright, expect
 
 
@@ -103,7 +104,7 @@ def main():
                         texts = page.evaluate('''() => {
                             const result = []; const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
                             while (walker.nextNode()) { const node = walker.currentNode, el = node.parentElement;
-                              if (!el || el.closest('script,style,select,iframe,code,pre,.avatar,.user-monogram,.workspace-monogram,.topbar-account') || !el.getClientRects().length) continue;
+                              if (!el || el.closest('script,style,select,iframe,code,pre,.avatar,.user-monogram,.workspace-monogram,.topbar-account,.profile-photo-preview') || !el.getClientRects().length) continue;
                               const style = getComputedStyle(el); if (style.visibility === 'hidden' || style.display === 'none') continue;
                               result.push(node.textContent);
                             }
@@ -120,11 +121,11 @@ def main():
                                 residual.append(text.strip())
                         assert not residual, (locale, state, residual)
                     def choose(page, locale):
-                        picker = page.locator('.language-selector select').first
+                        picker = page.locator('.language-selector [role=combobox]').first
                         expect(picker).to_be_attached()
                         if not picker.is_visible():
                             page.locator('.mobile-header button[aria-controls="workspace-navigation"]').click()
-                        picker.select_option(locale)
+                        select_value(picker, locale)
                         expect(page.locator('html')).to_have_attribute('lang', locale)
                     def nav(page, locale, label):
                         if page.viewport_size['width'] < 900 and not page.locator('.sidebar').evaluate('(el) => el.classList.contains("open")'):
@@ -136,7 +137,7 @@ def main():
                         nav(page, locale, '전체 아티팩트')
                         page.locator('.artifact-card').get_by_role('button', name=catalogs[locale]['{p0} 열기'].replace('{p0}', USER_TEXT[0]), exact=True).click()
                         detail = page.get_by_role('dialog')
-                        expect(detail.locator('.detail-version-picker select')).to_be_visible()
+                        expect(detail.locator('.detail-version-picker [role=combobox]')).to_be_visible()
                         return detail
                     def close_detail(page, locale):
                         page.get_by_role('dialog').get_by_role('button', name=catalogs[locale]['닫기'], exact=True).click()

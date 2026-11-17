@@ -54,6 +54,10 @@ func (s *Server) revoke(userID string) {
 func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) error {
 	path := r.URL.Path
 	switch {
+	case path == "/api/me" && r.Method == "PATCH":
+		return s.updateProfile(w, r, p)
+	case path == "/api/me/photo" || path == "/api/organization/photo" || (strings.HasPrefix(path, "/api/members/") && strings.HasSuffix(path, "/photo")):
+		return s.profilePhotos(w, r, p)
 	case path == "/api/auth/providers" && r.Method == "GET":
 		writeJSON(w, 200, map[string]any{"google": map[string]any{"enabled": s.st.GoogleAuth.Enabled, "startUrl": "/api/auth/google/start"}})
 		return nil
@@ -91,7 +95,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 		u := User{ID: random(), Name: in.Name, Email: email, Role: "admin", CreatedAt: now()}
 		if e = s.mutate(func() error {
 			s.st.Organization.Name = in.OrganizationName
-			s.st.Users[u.ID] = userRecord{u, hash}
+			s.st.Users[u.ID] = userRecord{User: u, Hash: hash}
 			s.audit(principal{user: &u}, "setup", u.ID, "")
 			return nil
 		}); e != nil {
@@ -335,7 +339,7 @@ func (s *Server) members(w http.ResponseWriter, r *http.Request, p principal) er
 			u.LoginMethod = "google"
 		}
 		if e = s.mutate(func() error {
-			s.st.Users[u.ID] = userRecord{u, hash}
+			s.st.Users[u.ID] = userRecord{User: u, Hash: hash}
 			s.audit(p, "member.created", u.ID, "")
 			return nil
 		}); e != nil {

@@ -30,25 +30,25 @@
 }
 .review-state {
   flex-shrink: 0;
-  border: 1px solid #d6d9df;
+  border: 1px solid var(--theme-line, #d6d9df);
   padding: 4px 9px;
   border-radius: 7px;
   font-size: 12px;
 }
 .review-state-approved {
-  color: #21683e;
-  border-color: #b8d7c5;
-  background: #f0f8f3;
+  color: var(--theme-success, #21683e);
+  border-color: var(--theme-line, #b8d7c5);
+  background: var(--theme-success-bg, #f0f8f3);
 }
 .review-state-in_review {
-  color: #174fce;
-  border-color: #bfd0f3;
-  background: #edf2ff;
+  color: var(--theme-accent, #174fce);
+  border-color: var(--theme-accent-line, #bfd0f3);
+  background: var(--theme-accent-bg, #edf2ff);
 }
 .review-state-changes_requested {
-  color: #9c3d24;
-  border-color: #e9caba;
-  background: #fff6f0;
+  color: var(--theme-danger, #9c3d24);
+  border-color: var(--theme-warning-line, #e9caba);
+  background: var(--theme-warning-bg, #fff6f0);
 }
 .review-notice,
 .review-loading {
@@ -58,7 +58,7 @@
   font-size: 13px;
 }
 .review-notice {
-  color: #21683e;
+  color: var(--theme-success, #21683e);
 }
 .review-loading {
   color: var(--muted, #626976);
@@ -142,7 +142,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #21683e;
+  color: var(--theme-success, #21683e);
   font-size: 12px;
 }
 .review-thread-state .button {
@@ -246,7 +246,7 @@
   min-width: 0;
 }
 .review-panel .field input,
-.review-panel .field select {
+.review-panel .field :is(select, .select-control) {
   width: 100%;
   min-width: 0;
 }

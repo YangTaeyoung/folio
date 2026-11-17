@@ -84,6 +84,11 @@ func (s *Server) effectiveVersionID(p principal, a Artifact) string {
 }
 func (s *Server) publicArtifactFor(p principal, a Artifact) Artifact {
 	a = s.publicArtifact(a)
+	if p.user != nil {
+		if owner, ok := s.st.Users[a.OwnerID]; ok && !owner.Disabled {
+			a.OwnerAvatarURL = owner.AvatarURL
+		}
+	}
 	if !s.own(p, a) && !s.draftReviewer(p, a) && a.ReviewEnabled {
 		a.CurrentVersionID = a.PublishedVersionID
 		if v, ok := s.version(a, a.PublishedVersionID); ok {

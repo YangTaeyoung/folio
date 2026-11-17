@@ -4,8 +4,8 @@ JSON camelCase. Error responses `{error:{code,message}}`, appropriate 400/401/40
 
 ## JSON models
 
-User: `{id,email,name,role:"admin"|"member",disabled,mustChangePassword,createdAt,loginMethod?:"google",googleLinked?:boolean}`. Omitted `loginMethod` means password account (including password accounts linked to Google); `google` means Google-only, with no local password.
-Organization: `{id,name}` (one per installation).
+User: `{id,email,name,role:"admin"|"member",disabled,mustChangePassword,createdAt,loginMethod?:"google",googleLinked?:boolean,avatarUrl?:string}`. Omitted `loginMethod` means password account (including password accounts linked to Google); `google` means Google-only, with no local password.
+Organization: `{id,name,avatarUrl?:string}` (one per installation).
 Artifact: `{id,slug,title,description,ownerId,ownerName,visibility:"private"|"organization"|"selected"|"public",memberIds:[],archived,expiresAt:null|string,createdAt,updatedAt,sizeBytes,currentVersionId,publishedVersionId,reviewEnabled,reviewerIds:[],shareUrl,kind,tags:[],provenance,favorite?,searchSnippet?,deletedAt?,deletedBy?}`.
 Version: `{id,artifactId,number,createdAt,sizeBytes,backendId,files:[{path,mimeType,size}],message,published,provenance,title,description,tags:[],metadataSnapshot?}`.
 Policy: `{quotaBytes,maxUploadBytes,retentionDays,overflowPolicy:"reject"|"delete_oldest"}`.
@@ -23,6 +23,12 @@ Domain: `{id,hostname,artifactId,provider:"manual"|"cloudflare"|"domainconnect",
 - GET /api/admin/auth/google -> `{enabled,clientId,clientSecretConfigured,allowedDomains:[],redirectURI}`; admin session required.
 - PATCH /api/admin/auth/google `{enabled,clientId,clientSecret?:string,allowedDomains:[]}` -> same; admin session + CSRF. Omitted/blank secret retains encrypted stored secret. Nonempty hosted-domain restriction uses signed `hd`, never email suffix. Disabling/changing settings preserves at least one active admin with an available sign-in method; pending logins are invalidated.
 - GET /api/me -> `{user,csrfToken,organization}`; 401 otherwise
+- PATCH /api/me `{name}` -> `{user}`; current member session + CSRF only, 1–100 Unicode characters without control characters. Credentials, role, email and sessions unchanged.
+- PUT /api/me/photo -> `{user}`; current member session + CSRF only. Raw `image/jpeg` or `image/png` body, matching sniffed type, at most 5 MiB and 2048 × 2048 pixels. Re-encoded and resized proportionally into 256 × 256; no uploaded metadata/trailing bytes retained.
+- DELETE /api/me/photo -> `{user}`; current member session + CSRF only; clears avatarUrl.
+- PUT /api/organization/photo -> `{organization}`; administrator session + CSRF only; same image limits.
+- DELETE /api/organization/photo -> `{organization}`; administrator session + CSRF only.
+- GET|HEAD /api/me/photo, /api/members/{id}/photo, /api/organization/photo -> binary sanitized image; active authenticated member only, API token requires `read`; guests/anonymous denied, missing/disabled target 404. `avatarUrl` values are local authenticated URLs with content revision queries; responses are `no-store` and `nosniff`. No raw photo bytes in public JSON models. Aggregate sanitized photo bytes capped at 8 MiB independently of artifact storage quota. Image/photo limits use `invalid_photo`, `photo_too_large`, `photo_storage_full`; invalid name uses `invalid_profile_name`.
 - POST /api/auth/logout -> 204
 - POST /api/auth/password `{currentPassword,newPassword}` -> `{user,csrfToken}` (session rotated)
 - GET /api/artifacts?view=library|mine|shared|archive|all&q=&sort=updated|title&tag=&favorite=true -> `{artifacts,usage:{usedBytes,quotaBytes},policy}`. all admin only; archive contains only readable archived items.
@@ -216,3 +222,8 @@ DNS contributor may extend these interfaces before core integration, recording e
 Root builds web/dist then copies it to internal/webassets/dist and Go embeds `dist/*`. Package `internal/webassets` exposes `FS() fs.FS` (sub FS). Build placeholder via .gitkeep until frontend exists. cmd/folio owns serve listeners and graceful shutdown, does not launch any external cloud services by default.
 
 Version-isolated previews: `POST /api/artifacts/:id/launch` accepts optional `isolatedVersion:true` together with an authorized `versionId`; omit `hostname` in this mode. The result includes `url`, `hostname`, `isolatedVersion`. The hostname must be routed to the content listener, using a content wildcard or exact DNS/tunnel registration. `GET /api/artifacts/:id/diff` also returns the two `previewHosts`. Host/version binding applies to every file, including root-absolute paths. See [version domains](COLLABORATION.md#version-preview-domains).
+
+
+## Profile photo persistence and recovery
+
+Profile and organization photos are stored inside the SQLite metadata snapshot, so existing mutation rollback and encrypted portable backup cover them atomically. Restore validates and re-encodes imported photos and regenerates local URLs rather than trusting backup-supplied URLs/MIME values. Existing destination user profiles and photos win during identity merge, preserving destination credentials and disabled state. Imported-only historical users retain their sanitized photos; the organization photo restores with imported organization metadata. A merged restore exceeding the 8 MiB photo budget is rejected. [Implementation and source references](references/profile-photos.md).

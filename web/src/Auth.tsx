@@ -1,5 +1,5 @@
 import { t as translate, useLocale } from "./i18n";
-import { LanguageSelector } from "./LanguageSelector";
+import { AppearanceControls } from "./AppearanceControls";
 import { useEffect, useState } from "react";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { api, json, setCSRF } from "./api";
@@ -10,7 +10,7 @@ export function Brand() {
   useLocale();
   return (
     <span className="brand">
-      <img src="/favicon.svg" alt="" />
+      <img src="/brand-mark.svg" alt="" />
       Folio
     </span>
   );
@@ -49,7 +49,7 @@ export default function Auth({
     >
       <header className="auth-header">
         <Brand />
-        <LanguageSelector />
+        <AppearanceControls />
       </header>
       <div className="auth-layout">
         {!setup && (
@@ -254,7 +254,7 @@ export function PasswordChange({
   const a = useAction();
   return (
     <div className="password-gate">
-      <LanguageSelector />
+      <AppearanceControls />
       <form
         className="panel narrow"
         onSubmit={(e) => {

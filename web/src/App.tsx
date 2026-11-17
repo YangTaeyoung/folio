@@ -1,5 +1,6 @@
+import { Select } from "./Select";
 import { t as translate, useLocale } from "./i18n";
-import { LanguageSelector } from "./LanguageSelector";
+import { AppearanceControls } from "./AppearanceControls";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
@@ -48,7 +49,7 @@ import {
   StoragePage,
   useResource,
 } from "./Admin";
-import { Empty, ErrorBox, Spinner } from "./ui";
+import { Avatar, Empty, ErrorBox, Spinner } from "./ui";
 
 type View =
   | "library"
@@ -227,7 +228,7 @@ function Viewer({
         </a>
         <span>{r.data?.artifact.title || translate("공유된 아티팩트")}</span>
         <div>
-          <LanguageSelector />
+          <AppearanceControls />
           {r.data && (
             <small className="scope-label">
               {visibilityLabels[r.data.artifact.visibility]}
@@ -492,9 +493,11 @@ function Workspace({
           onClick={() => go(isAdmin ? "settings" : "account")}
           aria-label={translate("작업 공간 설정")}
         >
-          <span className="workspace-monogram">
-            {session.organization.name.slice(0, 1)}
-          </span>
+          <Avatar
+            className="workspace-monogram"
+            name={session.organization.name}
+            src={session.organization.avatarUrl}
+          />
           <b>{session.organization.name}</b>
           <Settings size={15} />
         </button>
@@ -530,7 +533,7 @@ function Workspace({
             ))}
         </nav>
         <div className="sidebar-bottom">
-          <LanguageSelector />
+          <AppearanceControls />
           <div className="capacity">
             <div>
               <span>{translate("보관 용량")}</span>
@@ -550,9 +553,11 @@ function Workspace({
             </small>
           </div>
           <div className="sidebar-user">
-            <span className="user-monogram">
-              {session.user.name.slice(0, 1)}
-            </span>
+            <Avatar
+              className="user-monogram"
+              name={session.user.name}
+              src={session.user.avatarUrl}
+            />
             <span>
               <b>{session.user.name}</b>
               <small>
@@ -607,7 +612,7 @@ function Workspace({
             onClick={() => go("account")}
             aria-label={translate("내 계정 열기")}
           >
-            {session.user.name.slice(0, 1)}
+            <Avatar name={session.user.name} src={session.user.avatarUrl} />
           </button>
         </div>
         <main className={`workspace-main ${library ? "library-main" : ""}`}>
@@ -671,17 +676,17 @@ function Workspace({
                       />
                       <kbd>⌘K</kbd>
                     </div>
-                    <select
+                    <Select
                       className="sort-select"
                       aria-label={translate("정렬")}
                       value={sort}
-                      onChange={(e) => setSort(e.target.value)}
+                      onValueChange={(value) => setSort(value)}
                     >
                       <option value="updated">
                         {translate("최근 수정순")}
                       </option>
                       <option value="title">{translate("제목순")}</option>
-                    </select>
+                    </Select>
                     <div
                       className="view-toggle"
                       aria-label={translate("보기 방식")}
@@ -762,7 +767,13 @@ function Workspace({
           ) : view === "trash" ? (
             <TrashView onChange={() => changed()} />
           ) : view === "account" ? (
-            <AccountPage session={session} onSession={onSession} />
+            <AccountPage
+              session={session}
+              onSession={(next) => {
+                onSession(next);
+                setRevision((value) => value + 1);
+              }}
+            />
           ) : view === "agents" ? (
             <AgentsPage />
           ) : isAdmin ? (

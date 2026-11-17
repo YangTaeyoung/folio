@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -331,20 +332,20 @@ export function CollectionsView({
                     "컬렉션에 추가해도 아티팩트의 접근 권한은 바뀌지 않습니다.",
                   )}
                 >
-                  <select
+                  <Select
                     value={draft.visibility}
                     disabled={busy}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setDraft({
                         ...draft,
-                        visibility: e.target.value as
+                        visibility: value as
                           "private" | "organization",
                       })
                     }
                   >
                     <option value="private">{t("나만 보기")}</option>
                     <option value="organization">{t("조직 공유")}</option>
-                  </select>
+                  </Select>
                 </Field>
                 <h3>{t("아티팩트 순서")}</h3>
                 {!draft.artifactIds.length && (
@@ -1040,10 +1041,10 @@ export function VersionCompare({
       </header>
       <div className="compare-selectors">
         <Field label={t("이전 버전")}>
-          <select
+          <Select
             value={from}
-            onChange={(e) => {
-              setFrom(e.target.value);
+            onValueChange={(value) => {
+              setFrom(value);
               setPath("");
             }}
           >
@@ -1052,13 +1053,13 @@ export function VersionCompare({
                 {t("버전 {number}", { number: v.number })} · {date(v.createdAt)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label={t("이후 버전")}>
-          <select
+          <Select
             value={to}
-            onChange={(e) => {
-              setTo(e.target.value);
+            onValueChange={(value) => {
+              setTo(value);
               setPath("");
             }}
           >
@@ -1067,7 +1068,7 @@ export function VersionCompare({
                 {t("버전 {number}", { number: v.number })} · {date(v.createdAt)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <ErrorBox error={error} />

@@ -1,3 +1,4 @@
+import { ServiceIcon } from "./ServiceIcon";
 import { t as translate, useLocale } from "./i18n";
 import { useEffect, useState } from "react";
 import { CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
@@ -59,7 +60,10 @@ export function GoogleAuthSettings() {
       aria-labelledby="google-auth-heading"
     >
       <div className="section-title">
-        <h2 id="google-auth-heading">{translate("Google 로그인")}</h2>
+        <h2 id="google-auth-heading" className="service-heading">
+          <ServiceIcon service="google" />
+          {translate("Google 로그인")}
+        </h2>
         {config && (
           <span className={`badge ${config.enabled ? "" : "muted"}`}>
             {config.enabled ? translate("사용 중") : translate("사용 안 함")}
@@ -203,6 +207,7 @@ export function GoogleAuthSettings() {
             <details className="google-auth-guide admin-disclosure">
               <summary>
                 <span className="admin-disclosure-title">
+                  <ServiceIcon service="gcs" />
                   {translate("Google Cloud에서 연결하기")}
                 </span>
                 <span className="subtle">

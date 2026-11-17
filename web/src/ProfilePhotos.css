@@ -1,0 +1,124 @@
+.profile-settings {
+  display: grid;
+  gap: 24px;
+}
+.profile-settings-heading h2 {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 18px;
+}
+.profile-settings-heading p,
+.profile-photo-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.profile-photo-editor {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  min-width: 0;
+}
+.profile-photo-preview {
+  flex: 0 0 88px;
+  width: 88px;
+  height: 88px;
+  border: 1px solid var(--control-line);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 26px;
+  font-weight: 700;
+}
+.profile-photo-preview.organization {
+  border-radius: 20px;
+}
+.profile-photo-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-photo-controls {
+  flex: 1;
+  min-width: 0;
+}
+.profile-photo-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  position: relative;
+}
+.profile-photo-actions label {
+  cursor: pointer;
+}
+.profile-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.profile-photo-input:focus-visible + label {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.profile-photo-input:disabled + label {
+  opacity: 0.55;
+  cursor: wait;
+  pointer-events: none;
+}
+.profile-photo-filename {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.profile-photo-status {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.profile-photo-status:empty {
+  display: none;
+}
+.profile-name-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.profile-name-form .field {
+  width: min(320px, 100%);
+  margin: 0;
+}
+@media (max-width: 520px) {
+  .profile-photo-editor {
+    gap: 14px;
+  }
+  .profile-photo-preview {
+    flex-basis: 64px;
+    width: 64px;
+    height: 64px;
+    font-size: 20px;
+  }
+  .profile-photo-preview.organization {
+    border-radius: 14px;
+  }
+  .profile-photo-actions .button {
+    min-height: 40px;
+  }
+  .profile-name-form .field {
+    width: 100%;
+  }
+}

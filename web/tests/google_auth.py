@@ -17,6 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from browser_controls import choose
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -155,10 +156,10 @@ def main():
                     page.get_by_role('button', name='구성원', exact=True).click()
                     page.get_by_role('button', name='구성원 추가', exact=True).click()
                     modal = page.get_by_role('dialog')
-                    expect(modal.get_by_label('로그인 방법', exact=True)).to_have_value('password')
+                    expect(modal.get_by_label('로그인 방법', exact=True)).to_have_attribute('data-value', 'password')
                     modal.get_by_label('이름', exact=True).fill('Google Fixture')
                     modal.get_by_label('이메일', exact=True).fill('google.fixture@gmail.com')
-                    modal.get_by_label('로그인 방법', exact=True).select_option('google')
+                    choose(modal.get_by_label('로그인 방법', exact=True), 'google')
                     expect(modal.get_by_text('임시 비밀번호는 생성하지 않습니다.', exact=False)).to_be_visible()
                     with page.expect_response(lambda response: response.url == app + '/api/admin/members' and response.request.method == 'POST') as created:
                         modal.get_by_role('button', name='계정 만들기', exact=True).click()

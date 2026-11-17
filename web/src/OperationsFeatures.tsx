@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArchiveRestore,
@@ -7,7 +8,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { LanguageSelector } from "./LanguageSelector";
+import { AppearanceControls } from "./AppearanceControls";
 import { Brand } from "./Auth";
 import { api, APIError, bytes, date, json } from "./api";
 import { CopyButton, ErrorBox, Field, Spinner } from "./ui";
@@ -259,9 +260,9 @@ export function GuestLinks({
       <ErrorBox error={error} />
       <form className="ops-form" onSubmit={create}>
         <Field label={t("공유할 버전")}>
-          <select
+          <Select
             value={version}
-            onChange={(e) => setVersion(e.target.value)}
+            onValueChange={(value) => setVersion(value)}
             required
           >
             {versions.map((v) => (
@@ -269,7 +270,7 @@ export function GuestLinks({
                 {t("버전 {number}", { number: v.number })} · {date(v.createdAt)}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label={t("만료일")}>
           <input
@@ -581,7 +582,7 @@ export function GuestViewer({ id }: { id: string }) {
           <Brand />
         </a>
         <span>{t("읽기 전용 게스트 링크")}</span>
-        <LanguageSelector />
+        <AppearanceControls />
       </header>
       <ErrorBox error={error} />
       {url ? (

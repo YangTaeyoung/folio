@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, MessageSquare, RotateCcw } from "lucide-react";
 import { api, date, json } from "./api";
@@ -193,10 +194,10 @@ export function ReviewPanel({
                 }}
               >
                 <Field label={t("검토 상태")}>
-                  <select
+                  <Select
                     value={status}
                     disabled={busy}
-                    onChange={(e) => setStatus(e.target.value as ReviewStatus)}
+                    onValueChange={(value) => setStatus(value as ReviewStatus)}
                   >
                     {(
                       [
@@ -210,7 +211,7 @@ export function ReviewPanel({
                         {statusLabel(s)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <button
                   className="button secondary"
@@ -369,12 +370,12 @@ export function ReviewPanel({
               <summary>{t("파일 위치 지정 (선택)")}</summary>
               <div>
                 <Field label={t("파일")}>
-                  <select
+                  <Select
                     value={path}
                     disabled={busy}
-                    onChange={(e) => {
-                      setPath(e.target.value);
-                      if (!e.target.value) setAnchor("");
+                    onValueChange={(value) => {
+                      setPath(value);
+                      if (!value) setAnchor("");
                     }}
                   >
                     <option value="">{t("전체 버전")}</option>
@@ -383,7 +384,7 @@ export function ReviewPanel({
                         {f.path}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label={t("위치 또는 선택한 문구")}>
                   <input

@@ -13,6 +13,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from browser_controls import choose
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -132,7 +133,7 @@ def main():
                         page.get_by_role('button', name='저장소 연결', exact=True).first.click()
                         dialog = page.get_by_role('dialog', name='저장소 연결', exact=True)
                         for provider in ['aws', 'r2', 'gcs', 'azure']:
-                            dialog.get_by_label('저장소 종류', exact=True).select_option(provider)
+                            choose(dialog.get_by_label('저장소 종류', exact=True), provider)
                             dialog.locator('.modal-body').evaluate('e => e.scrollTop = 0')
                             capture(f'provider-{provider}-{width}')
                             submit = dialog.get_by_role('button', name='저장소 연결', exact=True)

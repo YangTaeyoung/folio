@@ -1,0 +1,149 @@
+{
+  "retrieved": "2026-11-18",
+  "assets": [
+    {
+      "file": "aws.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/aws-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "b23f044479fe5c80f7df0a9515f969e5ea710c5f40d26dffa08969a0151731f3"
+    },
+    {
+      "file": "azure.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/azure-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "abc639d094593943c1b201270f4903c74d02d2e26acf26abf592a29c222c5181"
+    },
+    {
+      "file": "cloudflare.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/cloudflare-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "cee35d3f0ecb7925ce0a89aeaff8b907cadae7c3fe44a23e4001cc8d5ee57502"
+    },
+    {
+      "file": "gcs.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/googlecloud-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "c0faf37b180dfc1efe12440c039047b0e1c60a3c424cca6616e580f6f219a7dc"
+    },
+    {
+      "file": "codex.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/codex-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "4a2f43ce46b5b6e3722c95088f88d26ef91e6a8c2e598e70642a1c54367386e4"
+    },
+    {
+      "file": "claudecode.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/claudecode-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "670b3d8d749d0815ad8f7e62a59d51cb5e2053cb19403f3541a8aed7036a877f"
+    },
+    {
+      "file": "geminicli.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/geminicli-color.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "c2f54ebaa4c3b9191c6a07f7b0c66bc78e4abe486003dc564469cf650672663e"
+    },
+    {
+      "file": "cursor.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/cursor.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "0cb51bddf264ae108926fd554c063ef40fc1aac3c5c921ddb39ad184e4e5d0ef"
+    },
+    {
+      "file": "opencode.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/opencode.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "7cfa6e9d6726f7c9fa26c7d9aef0dfec52d20a137380454340f30f12ccbfd302"
+    },
+    {
+      "file": "mcp.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/mcp.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "8670df38c9558de3cdd98d8b39ee6cbaf1c929377cffc5952e9b02f9bf9429b3"
+    },
+    {
+      "file": "copilot.svg",
+      "source": "https://registry.npmjs.org/@lobehub/icons-static-svg/-/icons-static-svg-1.103.0.tgz",
+      "archive_path": "package/icons/githubcopilot.svg",
+      "package": "@lobehub/icons-static-svg@1.103.0",
+      "license_notice": "LOBE-ICONS-LICENSE.txt",
+      "upstream_commit": "573cb307cbaf10dca7c471a634a4a6d3192e701b",
+      "modified": false,
+      "sha256": "bbc7fddc13448236e5edea8c399d2072dc40aa5da5bca07f7a2f412405c500a3"
+    },
+    {
+      "file": "r2.svg",
+      "source": "https://raw.githubusercontent.com/cloudflare/cloudflare-docs/8b688cd54b99da6d3a300ceaf6b1a8942d6ded72/src/icons/r2.svg",
+      "author": "Cloudflare",
+      "license_notice": "CLOUDFLARE-DOCS-LICENSE.txt",
+      "license": "CC-BY-4.0 (repository license; trademarks remain separate)",
+      "modified": false,
+      "sha256": "d830439d65e19ff6bc960476595237277ab54ef241b90f09f860a4bb7890ee23"
+    },
+    {
+      "file": "vscode.svg",
+      "source": "https://code.visualstudio.com/assets/branding/visual-studio-code-icons.zip",
+      "archive_path": "visual-studio-code-icons/vscode.svg",
+      "license_notice": "VS-CODE-README.txt",
+      "brand_guidelines": "https://code.visualstudio.com/brand",
+      "modified": false,
+      "sha256": "74ad401c6487a0dc5af1f6b2935556ab2d3553ae45effc7e1697b4d117d046b6"
+    },
+    {
+      "file": "minio.png",
+      "source": "https://cdn.prod.website-files.com/681c8426519d8db8f867c1e8/681c8426519d8db8f867c1f2_favicon-32x32.png",
+      "brand_guidelines": "https://www.min.io/logo",
+      "source_page": "https://www.min.io/logo",
+      "license": "MinIO brand asset; not relicensed under MIT",
+      "modified": false,
+      "sha256": "7a2d79d4a5801b848bf2d577c6c3d16598d69fd78bc9d2399dcc4ac2497b0759"
+    },
+    {
+      "file": "../images/google-signin-icon.png",
+      "source": "https://developers.google.com/identity/branding-guidelines",
+      "license": "Google identity asset; existing file retained unchanged",
+      "modified": false,
+      "sha256": "2bc2ae8e4c67de66d74bf1deed12cd8f22981270266a487576b671b0b4df361c"
+    }
+  ]
+}
