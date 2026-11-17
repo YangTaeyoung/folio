@@ -8,11 +8,13 @@ export interface User {
   mustChangePassword: boolean;
   loginMethod?: "password" | "google";
   googleLinked?: boolean;
+  avatarUrl?: string;
   createdAt: string;
 }
 export interface Organization {
   id: string;
   name: string;
+  avatarUrl?: string;
 }
 export interface Provenance {
   agent?: string;
@@ -38,6 +40,7 @@ export interface Artifact {
   description: string;
   ownerId: string;
   ownerName: string;
+  ownerAvatarUrl?: string;
   visibility: Visibility;
   memberIds: string[];
   archived: boolean;

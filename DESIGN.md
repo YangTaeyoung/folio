@@ -303,13 +303,19 @@ Guest-link management extends the sharing panel with a selected-version form, ex
 
 ### Language Picker
 
-A language icon and native select offer each language under its own name. Use the same picker in authentication, workspace and guest chrome. It has a transparent fill, divider stroke, control radius, minimum height (36px), and the shared keyboard focus treatment. The current locale persists locally and updates the document language. French navigation labels and toolbars can wrap; keep translated controls within their region rather than shrinking labels ([LanguageSelector.tsx:13](web/src/LanguageSelector.tsx#L13), [LanguageSelector.css:1](web/src/LanguageSelector.css#L1), [i18n.tsx:27](web/src/i18n.tsx#L27)).
+A language icon and the shared Radix Select offer each language under its own name. Use the same picker in authentication, workspace and guest chrome. It has a transparent fill, divider stroke, control radius, minimum height (36px), and the shared keyboard focus treatment. The current locale persists locally and updates the document language. French navigation labels and toolbars can wrap; keep translated controls within their region rather than shrinking labels ([LanguageSelector.tsx:13](web/src/LanguageSelector.tsx#L13), [LanguageSelector.css:1](web/src/LanguageSelector.css#L1), [i18n.tsx:27](web/src/i18n.tsx#L27)).
 
 ### Authentication, Feedback and Motion
 
 Optional Google sign-in appears above the email divider only when enabled by the provider response, and never on first-run setup. The form keeps the existing password flow, password visibility, account help and errors. Google configuration remains an optional administrative form with progressive guidance; the visual overhaul does not imply a new authentication feature ([Auth.tsx:41](web/src/Auth.tsx#L41), [Auth.tsx:116](web/src/Auth.tsx#L116), [GoogleAuthSettings.tsx:82](web/src/GoogleAuthSettings.tsx#L82)). Fonts, mark, artwork and Google button image use local paths; asset provenance and licenses are in [brand-assets.md](docs/design/brand-assets.md).
 
 Notices and errors state the actual outcome with text as well as color. Toasts use a dark surface. Drawer entrance takes (0.22s) with short horizontal motion; compact navigation takes (0.2s). Reduced-motion preference removes animation, transition and smooth scrolling ([style.css:1093](web/src/style.css#L1093), [style.css:1793](web/src/style.css#L1793), [style.css:2731](web/src/style.css#L2731)).
+
+### Appearance and identity (v0.6)
+
+The approved B composition supports a system default and explicit light/dark choices. The shared appearance controls sit with language selection in authentication, workspace, shared and guest chrome. `web/public/theme.js` resolves preference before the application paints; `Theme.css` maps canvas, navigation, text, selection, state, action and field-stroke roles. Dark mode keeps the cobalt accent, original paper sculpture and uploaded artifact colors. Stronger supporting text and field strokes satisfy the measured contrast targets in both modes; see [appearance references](docs/references/appearance.md).
+
+Dropdowns use the common Radix trigger and portalled listbox: aligned labels/icons, a chevron, selected checkmark, visible focus, typeahead, scroll limits and reduced-motion support. They preserve keyboard and modal focus behavior. Integration marks identify actual services without substituting company logos for unknown compatible endpoints. Personal and organization photo editors use a local preview and explicit save/cancel/remove actions; private images replace initials in the workspace shell and member selectors, with an initials fallback.
 
 ## Do's and Don'ts
 

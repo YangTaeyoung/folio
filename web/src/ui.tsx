@@ -107,11 +107,24 @@ export function CopyButton({
     </>
   );
 }
-export function Avatar({ name }: { name: string }) {
+export function Avatar({
+  name,
+  src,
+  className = "",
+}: {
+  name: string;
+  src?: string;
+  className?: string;
+}) {
   useLocale();
+  const [failed, setFailed] = useState("");
   return (
-    <span className="avatar" aria-hidden="true">
-      {name.trim().slice(0, 2).toUpperCase()}
+    <span className={`avatar ${className}`} aria-hidden="true">
+      {src && failed !== src ? (
+        <img src={src} alt="" onError={() => setFailed(src)} />
+      ) : (
+        name.trim().slice(0, 2).toUpperCase()
+      )}
     </span>
   );
 }
@@ -144,6 +157,13 @@ export function Modal({
     const first = el?.querySelector<HTMLElement>(selectors);
     first?.focus();
     function key(e: KeyboardEvent) {
+      // A portalled Select owns Escape/Tab until its menu closes. Do not close
+      // the containing dialog or move focus behind that active menu.
+      if (
+        e.defaultPrevented ||
+        document.querySelector('[data-folio-select-content][data-state="open"]')
+      )
+        return;
       if (e.key === "Escape") {
         e.preventDefault();
         close.current();

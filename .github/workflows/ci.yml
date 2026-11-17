@@ -21,6 +21,7 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: node --test web/scripts/locales.test.mjs
+      - run: node --test web/tests/agent_commands.test.ts
       - run: make build
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -33,6 +34,8 @@ jobs:
       - run: python web/tests/responsive_admin.py --binary ./dist/folio --screenshots .work/responsive-admin
       - run: python web/tests/collaboration.py --binary ./dist/folio --screenshots .work/collaboration-e2e
       - run: python web/tests/i18n.py --binary ./dist/folio --screenshots .work/i18n-e2e
+      - run: python web/tests/theme.py --binary ./dist/folio --screenshots .work/theme-e2e
+      - run: python web/tests/agent_guides.py --binary ./dist/folio --screenshots .work/agent-guides-e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -43,3 +46,5 @@ jobs:
             .work/responsive-admin/
             .work/collaboration-e2e/
             .work/i18n-e2e/
+            .work/theme-e2e/
+            .work/agent-guides-e2e/

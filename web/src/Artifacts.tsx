@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { ReviewPanel } from "./ReviewPanel";
 import { ArtifactContext, VersionCompare } from "./WorkspaceFeatures";
 import { GuestLinks } from "./OperationsFeatures";
@@ -204,7 +205,10 @@ export function ArtifactCard({
       </button>
       <div className="artifact-meta">
         <span className="owner-name">
-          <Avatar name={artifact.ownerName || "F"} />
+          <Avatar
+            name={artifact.ownerName || "F"}
+            src={artifact.ownerAvatarUrl}
+          />
           <span>
             <span>{artifact.ownerName || "—"}</span>
             <small>
@@ -394,7 +398,7 @@ export function SharePanel({
                         )
                       }
                     />
-                    <Avatar name={u.name} />
+                    <Avatar name={u.name} src={u.avatarUrl} />
                     <span>
                       <b>{u.name}</b>
                       <small>{u.email}</small>
@@ -714,7 +718,10 @@ export function DetailPanel({
   const [versions, setVersions] = useState<Version[]>([]);
   const [tab, setTab] = useState("preview");
   const [versionId, setVersionId] = useState(artifact.currentVersionId);
-  useEffect(()=>setVersionId(artifact.currentVersionId),[artifact.id,artifact.currentVersionId]);
+  useEffect(
+    () => setVersionId(artifact.currentVersionId),
+    [artifact.id, artifact.currentVersionId],
+  );
   const chosenVersion =
     versions.find((v) => v.id === versionId) ||
     versions.find((v) => v.id === artifact.currentVersionId);
@@ -762,10 +769,10 @@ export function DetailPanel({
                 <label htmlFor="detail-version">
                   {translate("검토할 버전")}
                 </label>
-                <select
+                <Select
                   id="detail-version"
                   value={chosenVersion?.id || versionId}
-                  onChange={(e) => setVersionId(e.target.value)}
+                  onValueChange={(value) => setVersionId(value)}
                 >
                   {versions
                     .slice()
@@ -780,7 +787,7 @@ export function DetailPanel({
                             : translate("초안")}
                       </option>
                     ))}
-                </select>
+                </Select>
                 {chosenVersion && (
                   <CopyButton
                     text={`${artifact.shareUrl}?version=${encodeURIComponent(chosenVersion.id)}`}
@@ -881,7 +888,10 @@ export function DetailPanel({
               <div>
                 <dt>{translate("작성자")}</dt>
                 <dd>
-                  <Avatar name={artifact.ownerName || "F"} />
+                  <Avatar
+                    name={artifact.ownerName || "F"}
+                    src={artifact.ownerAvatarUrl}
+                  />
                   {artifact.ownerName}
                 </dd>
               </div>

@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import re
 import time
+from browser_controls import choose
 from playwright.sync_api import sync_playwright, expect
 
 
@@ -132,7 +133,7 @@ def main():
                         nav('전체 아티팩트')
                         page.get_by_role('button', name='Collaboration report draft 열기', exact=True).click()
                         detail = page.get_by_role('dialog')
-                        detail.get_by_label('검토할 버전', exact=True).select_option(v3)
+                        choose(detail.get_by_label('검토할 버전', exact=True), v3)
                         detail.get_by_role('button', name=tab, exact=True).click()
                         return detail
 
@@ -142,7 +143,7 @@ def main():
                     expect(panel.locator('.review-state')).to_be_visible()
                     panel.get_by_label('새 댓글', exact=True).fill('Check the heading before publication.')
                     panel.get_by_text('파일 위치 지정 (선택)', exact=True).click()
-                    panel.get_by_label('파일', exact=True).select_option('index.html')
+                    choose(panel.get_by_label('파일', exact=True), 'index.html')
                     panel.get_by_label('위치 또는 선택한 문구', exact=True).fill('Version 3')
                     panel.get_by_role('button', name='댓글 남기기', exact=True).click()
                     expect(panel.get_by_text('댓글을 남겼습니다.', exact=True)).to_be_visible()
@@ -154,7 +155,7 @@ def main():
                     thread.get_by_role('button', name='해결', exact=True).click()
                     expect(thread.get_by_text('해결됨', exact=True)).to_be_visible()
                     thread.get_by_role('button', name='다시 열기', exact=True).click()
-                    panel.get_by_label('검토 상태', exact=True).select_option('approved')
+                    choose(panel.get_by_label('검토 상태', exact=True), 'approved')
                     panel.get_by_role('button', name='상태 저장', exact=True).click()
                     expect(panel.locator('.review-state-approved')).to_be_visible()
                     panel.get_by_role('button', name='이 버전 게시', exact=True).click()
@@ -170,7 +171,7 @@ def main():
                     editor = page.locator('.collection-editor')
                     editor.get_by_label('이름', exact=True).fill('Launch review')
                     editor.get_by_label('설명', exact=True).fill('Authored collaboration acceptance fixture.')
-                    editor.get_by_label('공유 범위', exact=True).select_option('organization')
+                    choose(editor.get_by_label('공유 범위', exact=True), 'organization')
                     editor.locator('.collection-choices').get_by_role('button').filter(has_text='Collaboration report').click()
                     editor.locator('.collection-choices').get_by_role('button').filter(has_text='Reference notes').click()
                     editor.get_by_role('button', name='Reference notes 위로 이동', exact=True).click()
@@ -204,8 +205,8 @@ def main():
                     phase = 'comparison'
                     detail.get_by_role('button', name='버전 비교', exact=True).click()
                     comparison = detail.locator('.version-compare')
-                    comparison.get_by_label('이전 버전', exact=True).select_option(v1)
-                    comparison.get_by_label('이후 버전', exact=True).select_option(v3)
+                    choose(comparison.get_by_label('이전 버전', exact=True), v1)
+                    choose(comparison.get_by_label('이후 버전', exact=True), v3)
                     expect(comparison.locator('.compare-files button').filter(has_text='index.html')).to_be_visible()
                     comparison.locator('.compare-files button').filter(has_text='index.html').click()
                     expect(comparison.locator('.compare-code')).to_contain_text('Version 1')
@@ -232,7 +233,7 @@ def main():
                     page.get_by_role('button', name='Collaboration report draft 공유', exact=True).click()
                     share = page.get_by_role('dialog')
                     guest_section = share.locator('.ops-section')
-                    guest_section.get_by_label('공유할 버전', exact=True).select_option(v2)
+                    choose(guest_section.get_by_label('공유할 버전', exact=True), v2)
                     guest_section.get_by_label('만료일', exact=True).fill((datetime.datetime.now() + datetime.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M'))
                     guest_section.get_by_label('비밀번호 (선택)', exact=True).fill('Guest-fixture-password-123!')
                     with page.expect_response(lambda r: r.request.method == 'POST' and r.url.endswith(f'/api/artifacts/{aid}/guest-links')) as response:

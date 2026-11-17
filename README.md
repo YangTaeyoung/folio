@@ -131,3 +131,9 @@ Serve the management UI and each artifact on separate origins. Keep `data.key`, 
 For a full installation backup, especially above the portable limit, stop Folio and copy its complete data directory together with matching external-store snapshots. [Installation-level restore](INSTALL.md#backup-and-restore) retains that separate recovery procedure.
 
 Folio runs uploaded content in a sandbox on per-artifact hostnames. Uploaded content is untrusted. Do not grant it management-origin execution or weaken the documented origin separation.
+
+## Appearance and profiles
+
+Choose system, light or dark appearance beside the language picker. The preference stays on your device. Shared Radix menus, locally bundled service icons and contrast-tested controls work without a CDN. Upload your profile photo under **My account**, and an administrator can update the organization photo under **Organization settings**. JPEG/PNG files are validated and stored on the Folio server.
+
+The **Agents** page provides separate setup and verification commands for Codex, Claude Code, Gemini CLI, VS Code/Copilot, Cursor and OpenCode, plus an optional generic MCP configuration. [Appearance and contrast references](docs/references/appearance.md) · [Photo permissions and recovery](docs/references/profile-photos.md) · [Client command sources](docs/references/agent-connections.md).

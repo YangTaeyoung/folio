@@ -1,10 +1,20 @@
+import { AgentClientGuides } from "./AgentClientGuides";
+import {
+  ServiceIcon,
+  resolveStorageService,
+  type ServiceId,
+} from "./ServiceIcon";
+import {
+  UserProfileSettings,
+  OrganizationPhotoSettings,
+} from "./ProfilePhotos";
+import { Select } from "./Select";
 import { t as translate, useLocale } from "./i18n";
 import { useEffect, useState } from "react";
 import {
   Archive,
   ArrowUpRight,
   CheckCircle2,
-  Cloud,
   CloudUpload,
   ExternalLink,
   Globe,
@@ -13,7 +23,6 @@ import {
   Link,
   Plus,
   RefreshCw,
-  Server,
   ShieldCheck,
   Terminal,
   Trash2,
@@ -183,7 +192,7 @@ export function MembersPage({ self }: { self: User }) {
                   <tr key={u.id}>
                     <td>
                       <div className="person-cell">
-                        <Avatar name={u.name} />
+                        <Avatar name={u.name} src={u.avatarUrl} />
                         <span>
                           <b>
                             {u.name}
@@ -198,15 +207,15 @@ export function MembersPage({ self }: { self: User }) {
                       </div>
                     </td>
                     <td data-label={translate("역할")}>
-                      <select
+                      <Select
                         aria-label={translate("{p0} 역할", { p0: u.name })}
                         value={u.role}
                         disabled={a.busy || u.id === self.id}
-                        onChange={(e) =>
+                        onValueChange={(value) =>
                           void a.run(async () => {
                             await api(
                               `/api/admin/members/${u.id}`,
-                              json("PATCH", { role: e.target.value }),
+                              json("PATCH", { role: value }),
                             );
                             r.reload();
                           })
@@ -214,7 +223,7 @@ export function MembersPage({ self }: { self: User }) {
                       >
                         <option value="member">{translate("구성원")}</option>
                         <option value="admin">{translate("관리자")}</option>
-                      </select>
+                      </Select>
                     </td>
                     <td data-label={translate("상태")}>
                       <span className={`badge ${u.disabled ? "muted" : ""}`}>
@@ -332,27 +341,29 @@ export function MembersPage({ self }: { self: User }) {
                 />
               </Field>
               <Field label={translate("역할")}>
-                <select
+                <Select
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  onValueChange={(value) => setForm({ ...form, role: value })}
                 >
                   <option value="member">{translate("구성원")}</option>
                   <option value="admin">{translate("관리자")}</option>
-                </select>
+                </Select>
               </Field>
               {providers.data?.google.enabled && (
                 <Field label={translate("로그인 방법")}>
-                  <select
+                  <Select
                     value={form.loginMethod}
-                    onChange={(e) =>
-                      setForm({ ...form, loginMethod: e.target.value })
+                    onValueChange={(value) =>
+                      setForm({ ...form, loginMethod: value })
                     }
                   >
                     <option value="password">
                       {translate("이메일과 비밀번호")}
                     </option>
-                    <option value="google">{translate("Google 계정")}</option>
-                  </select>
+                    <option value="google" data-service="google">
+                      {translate("Google 계정")}
+                    </option>
+                  </Select>
                 </Field>
               )}
               <Notice>
@@ -600,11 +611,7 @@ export function StoragePage() {
           r.data?.backends.map((b) => (
             <div className="connection-row" key={b.id}>
               <div className={`provider-icon ${b.provider}`}>
-                {b.provider === "local" ? (
-                  <HardDrive size={23} />
-                ) : (
-                  <Cloud size={23} />
-                )}
+                <ServiceIcon service={resolveStorageService(b)} size={26} />
               </div>
               <div className="connection-name">
                 <b>{b.name}</b>
@@ -735,13 +742,12 @@ export function StoragePage() {
                 />
               </Field>
               <Field label={translate("용량을 초과하면")}>
-                <select
+                <Select
                   value={p.overflowPolicy}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setPolicy({
                       ...p,
-                      overflowPolicy: e.target
-                        .value as Policy["overflowPolicy"],
+                      overflowPolicy: value as Policy["overflowPolicy"],
                     })
                   }
                 >
@@ -751,7 +757,7 @@ export function StoragePage() {
                   <option value="delete_oldest">
                     {translate("오래된 아티팩트부터 자동 삭제")}
                   </option>
-                </select>
+                </Select>
               </Field>
             </div>
             {p.overflowPolicy === "delete_oldest" && (
@@ -877,13 +883,17 @@ export function StoragePage() {
           >
             <div className="modal-body">
               <Field label={translate("저장소 종류")}>
-                <select value={preset} onChange={(e) => select(e.target.value)}>
+                <Select value={preset} onValueChange={(value) => select(value)}>
                   {getPresets().map((x) => (
-                    <option value={x.id} key={x.id}>
+                    <option
+                      value={x.id}
+                      key={x.id}
+                      data-service={x.id as ServiceId}
+                    >
                       {x.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field label={translate("연결 이름")}>
                 <input
@@ -1313,7 +1323,7 @@ export function DomainsPage() {
       >
         <summary>
           <span className="admin-disclosure-title">
-            <Cloud size={18} />
+            <ServiceIcon service="cloudflare" size={18} />
             {translate("Cloudflare 연결")}
           </span>
           <span className="subtle">
@@ -1350,6 +1360,7 @@ export function DomainsPage() {
                 }
               >
                 <ExternalLink size={16} />
+                <ServiceIcon service="cloudflare" />
                 {translate("Cloudflare 로그인 시작")}
               </button>
             </div>
@@ -1561,11 +1572,11 @@ export function DomainsPage() {
                 />
               </Field>
               <Field label={translate("연결할 아티팩트")}>
-                <select
+                <Select
                   required
                   value={form.artifactId}
-                  onChange={(e) =>
-                    setForm({ ...form, artifactId: e.target.value })
+                  onValueChange={(value) =>
+                    setForm({ ...form, artifactId: value })
                   }
                 >
                   <option value="">{translate("아티팩트 선택")}</option>
@@ -1574,22 +1585,23 @@ export function DomainsPage() {
                       {x.title}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field label={translate("DNS 연결 방식")}>
-                <select
+                <Select
                   value={form.provider}
-                  onChange={(e) =>
-                    setForm({ ...form, provider: e.target.value })
+                  onValueChange={(value) =>
+                    setForm({ ...form, provider: value })
                   }
                 >
                   <option value="manual">
                     {translate("DNS 레코드 직접 등록")}
                   </option>
-                  <option value="cloudflare">
+                  <option value="cloudflare" data-service="cloudflare">
                     {translate("Cloudflare 자동 등록")}
                   </option>
                   <option
+                    data-service="domainconnect"
                     value="domainconnect"
                     disabled={
                       !providers.data?.providers.find(
@@ -1599,7 +1611,7 @@ export function DomainsPage() {
                   >
                     {translate("Domain Connect · 지원 DNS 서비스")}
                   </option>
-                </select>
+                </Select>
               </Field>
               <Field
                 label={translate("연결 대상 (선택)")}
@@ -1647,19 +1659,6 @@ export function AgentsPage() {
   const [scopes, setScopes] = useState(["read", "publish"]);
   const [secret, setSecret] = useState("");
   const a = useAction();
-  const mcp = JSON.stringify(
-    {
-      mcpServers: {
-        folio: {
-          command: "folio",
-          args: ["mcp"],
-          env: { FOLIO_URL: location.origin, FOLIO_TOKEN: "YOUR_API_TOKEN" },
-        },
-      },
-    },
-    null,
-    2,
-  );
   return (
     <div className="admin-surface admin-agents">
       <PageHeading
@@ -1762,32 +1761,7 @@ export function AgentsPage() {
             </div>
           )}
         </section>
-        <section className="panel">
-          <div className="section-title">
-            <h2>{translate("2. MCP 연결")}</h2>
-            <Server size={19} />
-          </div>
-          <p className="subtle">
-            {translate(
-              "Folio CLI를 설치한 뒤 에이전트의 MCP 설정에 추가하세요. 토큰을 공개 저장소에 넣지 마세요.",
-            )}
-          </p>
-          <pre className="code-block">{mcp}</pre>
-          <CopyButton text={mcp} label={translate("설정 복사")} />
-          <details className="admin-code-guide">
-            <summary>{translate("CLI로 바로 게시")}</summary>
-            <pre className="code-block">
-              {"folio login --token-stdin --url " +
-                location.origin +
-                "\nfolio publish ./my-artifact\nfolio mcp"}
-            </pre>
-            <p className="subtle">
-              {translate(
-                "지원 도구: 아티팩트 목록·검색·게시·수정·공유·보관·복원·한도 확인",
-              )}
-            </p>
-          </details>
-        </section>
+        <AgentClientGuides />
       </div>
       <section className="panel">
         <div className="section-title">
@@ -1896,6 +1870,15 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
           )}
         </form>
       </section>
+      {r.data && (
+        <OrganizationPhotoSettings
+          organization={r.data.organization}
+          onSaved={() => {
+            r.reload();
+            onChanged();
+          }}
+        />
+      )}
       <GoogleAuthSettings />
       <details className="admin-disclosure admin-installation">
         <summary>
@@ -2034,10 +2017,17 @@ export function AccountPage({
           </div>
         </dl>
       </section>
+      <UserProfileSettings
+        user={session.user}
+        onSaved={(user) => onSession({ ...session, user })}
+      />
       {session.user.loginMethod === "google" ? (
         <section className="panel admin-section">
           <div className="admin-section-heading">
-            <h2>{translate("Google 로그인")}</h2>
+            <h2 className="service-heading">
+              <ServiceIcon service="google" />
+              {translate("Google 로그인")}
+            </h2>
           </div>
           <div>
             <p className="subtle">
@@ -2051,6 +2041,7 @@ export function AccountPage({
               target="_blank"
               rel="noreferrer"
             >
+              <ServiceIcon service="google" />
               {translate("Google 계정 보안 설정")}
               <ExternalLink size={15} />
             </a>

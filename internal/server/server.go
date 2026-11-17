@@ -51,14 +51,17 @@ type User struct {
 	PasswordHash       string    `json:"-"`
 	LoginMethod        string    `json:"loginMethod,omitempty"`
 	GoogleLinked       bool      `json:"googleLinked,omitempty"`
+	AvatarURL          string    `json:"avatarUrl,omitempty"`
 }
 type userRecord struct {
 	User
-	Hash string `json:"passwordHash"`
+	Hash  string        `json:"passwordHash"`
+	Photo *profilePhoto `json:"photo,omitempty"`
 }
 type Organization struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatarUrl,omitempty"`
 }
 type Policy struct {
 	QuotaBytes     int64  `json:"quotaBytes"`
@@ -97,6 +100,7 @@ type Artifact struct {
 	Description        string     `json:"description"`
 	OwnerID            string     `json:"ownerId"`
 	OwnerName          string     `json:"ownerName"`
+	OwnerAvatarURL     string     `json:"ownerAvatarUrl,omitempty"`
 	Visibility         string     `json:"visibility"`
 	MemberIDs          []string   `json:"memberIds"`
 	Archived           bool       `json:"archived"`
@@ -176,6 +180,7 @@ type Garbage struct {
 }
 type state struct {
 	Organization        Organization
+	OrganizationPhoto   *profilePhoto
 	Policy              Policy
 	Users               map[string]userRecord
 	Sessions            map[string]Session
@@ -524,6 +529,7 @@ func (s *Server) publicVersion(v Version) Version {
 	return v
 }
 func (s *Server) publicArtifact(a Artifact) Artifact {
+	a.OwnerAvatarURL = ""
 	a.MemberIDs = append([]string{}, a.MemberIDs...)
 	if u, ok := s.st.Users[a.OwnerID]; ok {
 		a.OwnerName = u.Name

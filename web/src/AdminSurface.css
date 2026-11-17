@@ -75,7 +75,7 @@
 }
 .admin-storage .storage-summary-icon {
   border-radius: 50%;
-  background: #f3f5f8;
+  background: var(--theme-surface, #f3f5f8);
   border: 0;
 }
 .admin-storage .storage-summary h2 {
@@ -88,7 +88,7 @@
 }
 .admin-storage .provider-icon {
   border: 0;
-  background: #f3f5f8;
+  background: var(--theme-surface, #f3f5f8);
 }
 .admin-disclosure {
   min-width: 0;

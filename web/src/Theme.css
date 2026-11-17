@@ -1,0 +1,106 @@
+/* Shared dark roles. Light fallbacks in the component sheets preserve the B palette. */
+:root {
+  color-scheme: light;
+  --muted: #5c6370;
+  --theme-muted: var(--muted);
+  --control-line: #7b8493;
+}
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #edf0f5;
+  --muted: #aab3c3;
+  --accent: #a2baff;
+  --soft: #24314e;
+  --line: #343b48;
+  --paper: #15171c;
+  --nav: #1d2027;
+  --control-line: #7c879b;
+  --theme-ink: var(--ink);
+  --theme-muted: var(--muted);
+  --theme-paper: var(--paper);
+  --theme-surface: #1d2027;
+  --theme-raised: #272c36;
+  --theme-line: var(--line);
+  --theme-action: #e6ebf4;
+  --theme-action-hover: #cbd4e4;
+  --theme-on-action: #171b24;
+  --theme-accent: var(--accent);
+  --theme-accent-bg: var(--soft);
+  --theme-accent-line: #526b9e;
+  --theme-accent-fill: #a2baff;
+  --theme-success: #93dbb0;
+  --theme-success-bg: #1e352b;
+  --theme-success-line: #3f6a52;
+  --theme-success-fill: #28633f;
+  --theme-danger: #ffadb5;
+  --theme-danger-bg: #3c242d;
+  --theme-danger-line: #84434e;
+  --theme-danger-fill: #b33040;
+  --theme-warning: #edc08f;
+  --theme-warning-bg: #382e23;
+  --theme-warning-line: #7c6343;
+  --theme-warning-fill: #875820;
+}
+:root input:not([type="checkbox"]):not([type="radio"]):not(:disabled),
+:root textarea:not(:disabled),
+:root :is(select, .select-control):not(:disabled) {
+  border-color: var(--control-line);
+}
+.toast .icon-button,
+.toast .icon-button:hover {
+  color: #c9d2e2;
+}
+:root[data-theme="dark"] .toast .icon-button:hover {
+  background: #454e5f;
+}
+:root[data-theme="dark"] .brand img {
+  filter: invert(1);
+}
+:root[data-theme="dark"] .button.primary,
+:root[data-theme="dark"] .auth-submit {
+  color: var(--theme-on-action);
+}
+:root[data-theme="dark"] .topbar-account {
+  color: var(--theme-on-action);
+}
+:root[data-theme="dark"] .toast {
+  background: #303744;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+/* Uploaded pages own their visual design; never invert or recolor their pixels. */
+iframe {
+  color-scheme: light;
+}
+.avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.avatar:has(img) {
+  overflow: hidden;
+}
+.topbar-account .avatar {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+.topbar-account {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.service-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
