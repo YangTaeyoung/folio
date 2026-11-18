@@ -650,6 +650,9 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Cache-Control", "no-store")
+		if s.pathMode && s.servePathContent(w, r) {
+			return
+		}
 		if strings.ToLower(r.Host) != s.appHost {
 			errorJSON(w, fail(404, "not_found", "Not found"))
 			return

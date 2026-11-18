@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -13,6 +14,44 @@ type ContentLayout struct {
 	Template string
 	PathMode bool
 	Prefix   string
+}
+
+// servePathContent serves path-mode content: requests for hosts other than the management host
+// (verified custom domains) and requests under the content prefix. It reports whether it
+// handled r.
+func (s *Server) servePathContent(w http.ResponseWriter, r *http.Request) bool {
+	if strings.ToLower(r.Host) != s.appHost {
+		s.serveContent(w, r, strings.ToLower(r.Host), "")
+		return true
+	}
+	base := s.contentPrefix + "/"
+	if r.URL.Path == s.contentPrefix {
+		http.NotFound(w, r)
+		return true
+	}
+	if !strings.HasPrefix(r.URL.Path, base) {
+		return false
+	}
+	seg, tail, hasSlash := strings.Cut(strings.TrimPrefix(r.URL.Path, base), "/")
+	rawSeg, _, _ := strings.Cut(strings.TrimPrefix(r.URL.EscapedPath(), base), "/")
+	if seg == "" || seg != strings.ToLower(seg) || rawSeg != seg {
+		http.NotFound(w, r)
+		return true
+	}
+	site := base + seg
+	if !hasSlash {
+		target := site + "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusPermanentRedirect)
+		return true
+	}
+	inner := r.Clone(r.Context())
+	inner.URL.Path = "/" + tail
+	inner.URL.RawPath = ""
+	s.serveContent(w, inner, s.appHost+site, site)
+	return true
 }
 
 var reservedContentPrefixes = map[string]bool{"api": true, "s": true, "g": true, "assets": true}

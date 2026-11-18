@@ -289,7 +289,10 @@ func (s *Server) serveContent(w http.ResponseWriter, r *http.Request, key, prefi
 	if !s.read(principal{}, a) {
 		if !validViewer || !s.read(p, a) {
 			if r.URL.Path == "/" {
-				target := s.cfg.AppURL + "/s/" + a.Slug + "?domain=" + url.QueryEscape(r.Host)
+				target := s.cfg.AppURL + "/s/" + a.Slug
+				if prefix == "" {
+					target += "?domain=" + url.QueryEscape(r.Host)
+				}
 				http.Redirect(w, r, target, 303)
 			} else {
 				http.NotFound(w, r)
