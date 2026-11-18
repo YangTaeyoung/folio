@@ -215,6 +215,8 @@ type Server struct {
 	bootstrap       string
 	origin          string
 	appHost         string
+	pathMode        bool
+	contentPrefix   string
 	factory         func(blob.Config) (blob.Store, error)
 	dns             DNSService
 	loginAttempts   map[string]attempt
@@ -260,21 +262,16 @@ func New(c Config) (*Server, error) {
 	if c.AppURL == "" {
 		c.AppURL = "http://folio.localhost:4310"
 	}
-	if c.ContentURL == "" {
-		c.ContentURL = "http://{artifact}.content.folio.localhost:4311"
-	}
 	c.AppURL = strings.TrimRight(c.AppURL, "/")
 	a, e := url.Parse(c.AppURL)
 	if e != nil || a.Host == "" || (a.Scheme != "http" && a.Scheme != "https") || a.Path != "" || a.RawQuery != "" || a.User != nil {
 		return nil, errors.New("AppURL must be an HTTP(S) origin")
 	}
-	if strings.Count(c.ContentURL, "{artifact}") != 1 {
-		return nil, errors.New("ContentURL must contain one {artifact} hostname placeholder")
+	layout, e := ResolveContentURL(c.AppURL, c.ContentURL)
+	if e != nil {
+		return nil, e
 	}
-	cu, e := url.Parse(strings.ReplaceAll(c.ContentURL, "{artifact}", "sample"))
-	if e != nil || cu.Host == "" || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Path != "" || cu.RawQuery != "" || cu.User != nil || cu.Hostname() == a.Hostname() || !strings.Contains(strings.Split(c.ContentURL, "://")[1], "{artifact}") {
-		return nil, errors.New("ContentURL must be a distinct artifact-isolated HTTP(S) origin")
-	}
+	c.ContentURL = layout.Template
 	if e = os.MkdirAll(c.DataDir, 0700); e != nil {
 		return nil, e
 	}
@@ -311,7 +308,7 @@ func New(c Config) (*Server, error) {
 		return nil, e
 	}
 	os.Chmod(filepath.Join(c.DataDir, "folio.db"), 0600)
-	s := &Server{cfg: c, db: db, processLock: processLock, stores: map[string]blob.Store{}, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
+	s := &Server{cfg: c, db: db, processLock: processLock, stores: map[string]blob.Store{}, key: key, bootstrap: c.BootstrapToken, origin: a.Scheme + "://" + a.Host, appHost: strings.ToLower(a.Host), pathMode: layout.PathMode, contentPrefix: layout.Prefix, factory: c.BlobFactory, dns: c.DNS, loginAttempts: map[string]attempt{}, inFlight: map[string]int{}, pendingBackends: map[string]int{}, pendingUploads: map[string]bool{}}
 	if s.factory == nil {
 		s.factory = blob.New
 	}
