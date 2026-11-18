@@ -99,7 +99,9 @@ catch-all 404. DNS cleanup is a separate explicit operation.
 The exact AppURL hostname routes to `AppOrigin`, default
 `http://127.0.0.1:4310`; other approved content/custom hostnames route to
 `ContentOrigin`, default `http://127.0.0.1:4311`. Configure explicit upstreams when
-listeners use different ports or addresses. The final ingress rule is always
+listeners use different ports or addresses. In path mode `folio serve` sets
+`ContentOrigin` to the management listener: artifacts need no content hostnames, and
+verified custom domains reach the management listener, which serves them by Host. The final ingress rule is always
 `http_status:404`. ContentURL still governs artifact isolation in the server;
 adding tunnel ingress does not authorize an arbitrary artifact hostname.
 

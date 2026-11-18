@@ -21,7 +21,7 @@ Install Folio from https://github.com/YangTaeyoung/folio. Read INSTALL.md and
 scripts/install.sh first, download the latest release for this machine, and
 verify its SHA-256 against the release checksums before installing in my user
 bin directory. Start `folio serve` with a new private persistent data directory
-and localhost-only management/content listeners. Show me the private first-run
+and a localhost-only management listener. Show me the private first-run
 setup URL so I can create the admin account. Install the portable Folio skill
 for this agent without overwriting existing files. Explain how I can create a
 scoped API token and configure `folio mcp`; keep tokens out of logs and shell
@@ -43,7 +43,7 @@ The first-run URL appears in the terminal. Open it and create your organization 
 
 - **Personal and team libraries:** ordered private/team collections, tags, favorites, grid/list views and permission-filtered local body search. Collections never change artifact access.
 - **Share from a side panel:** private, organization, selected people or public; optional expiry and immediate revocation. Recipients have read access; owners and admins manage content.
-- **Interactive artifacts:** isolated execution hostnames, relative assets and JavaScript modules, retained revisions, rollback and ZIP downloads. Compare authorized versions side by side with file hashes and bounded text diffs.
+- **Interactive artifacts:** served under the management origin at `/c/{artifact}/` by default, or on isolated per-artifact hostnames; relative assets and JavaScript modules, retained revisions, rollback and ZIP downloads. Compare authorized versions side by side with file hashes and bounded text diffs.
 - **Drafts and review:** keep a working version separate from the official publication, collect version-bound comment threads, assign reviewers and explicitly promote an approved revision. Version links retain their metadata snapshots.
 - **Guest links:** read-only access to one chosen version, including an explicitly shared draft, with expiry, optional password and immediate revocation.
 - **Storage and lifecycle:** local filesystem, AWS S3, R2/MinIO and other S3-compatible services, Google Cloud Storage and Azure Blob. Configure/test a backend and select it for new revisions while keeping old revisions accessible.
@@ -112,7 +112,7 @@ docker compose up --build -d
 docker compose logs folio
 ```
 
-Both listeners default to loopback. Configure LAN DNS/origins and TLS before exposing them; see [INSTALL.md](INSTALL.md). Docker's core image intentionally does not bundle `cloudflared`; use token/manual DNS and your own reverse proxy, or install a compatible `cloudflared` in a derived image for browser login/tunnel management.
+The management listener defaults to loopback, and artifacts are served under it at `/c/{artifact}/`; subdomain mode with a separate content listener is opt-in (see [content modes](INSTALL.md#content-modes)). Configure LAN DNS/origins and TLS before exposing them; see [INSTALL.md](INSTALL.md). Docker's core image intentionally does not bundle `cloudflared`; use token/manual DNS and your own reverse proxy, or install a compatible `cloudflared` in a derived image for browser login/tunnel management.
 
 ```sh
 go test ./...

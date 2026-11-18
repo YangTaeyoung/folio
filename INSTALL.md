@@ -26,7 +26,18 @@ For offline Docker, build/pull the image on a connected machine, `docker save fo
 
 ## First run and users
 
-Folio binds management to `127.0.0.1:4310` and artifact content to `127.0.0.1:4311`. The advertised defaults are `http://folio.localhost:4310` and `http://{artifact}.content.folio.localhost:4311`. Use a browser/resolver that resolves `.localhost` names to loopback, or configure your local resolver.
+Folio binds management to `127.0.0.1:4310` and advertises `http://folio.localhost:4310`. Artifact content is served on the same origin under `http://folio.localhost:4310/c/{artifact}/`. Use a browser/resolver that resolves `.localhost` names to loopback, or configure your local resolver.
+
+### Content modes
+
+`--content-url` (`FOLIO_CONTENT_URL`) contains one `{artifact}` placeholder, and its position selects the mode:
+
+- **Path mode (default):** `https://folio.example.com/c/{artifact}`. The placeholder is the last path segment on the management origin. One hostname, one certificate and one ingress route; `--content-listen` is not used. Artifact JavaScript runs on the management origin with the viewer's session, so an artifact can call management APIs as the person viewing it, and artifacts share one origin with each other. Use it when publishers are trusted.
+- **Subdomain mode:** `https://{artifact}.artifacts.example.com`. Every artifact gets its own execution hostname on the content listener (`--content-listen`, default `127.0.0.1:4311`). Needs wildcard DNS and TLS for the content hosts, and keeps artifacts isolated from the management origin and from each other.
+
+### Upgrading to path mode
+
+Installations that never set `--content-url` switch to path mode on upgrade, and old `*.content.folio.localhost:4311` links stop working. To stay on subdomain mode, set `--content-url 'http://{artifact}.content.folio.localhost:4311'` (or your existing template) explicitly and keep `--content-listen`. Installations that already set a host template are unaffected.
 
 The terminal displays a private setup URL containing a one-time token. The same token is stored in `bootstrap.token` in the private data directory until setup completes. An operator may supply `FOLIO_BOOTSTRAP_TOKEN` through a protected environment instead. Never expose the setup token in a public log. Open the setup URL, create the organization and admin, then create members in the backoffice. Temporary passwords require a first-login change. Administrators can manage every artifact; ordinary recipients can only read artifacts shared with them.
 
@@ -34,7 +45,7 @@ Create scoped API tokens in **Agents & API keys** and save them using `folio log
 
 ## LAN deployment and HTTPS
 
-Choose a management hostname and a different per-artifact content template, then configure DNS to resolve them to the server/reverse proxy. For example:
+In path mode, configure only the management hostname: `--app-url https://folio.example.internal` serves artifacts at `https://folio.example.internal/c/{artifact}/`. For subdomain mode, choose a management hostname and a different per-artifact content template, then configure DNS to resolve them to the server/reverse proxy. For example:
 
 ```sh
 folio serve --data-dir /srv/folio/data \
@@ -43,7 +54,7 @@ folio serve --data-dir /srv/folio/data \
   --content-url 'https://{artifact}.artifacts.example.internal'
 ```
 
-Route management to port4310 and the content hosts to port4311. Preserve each incoming Host header and exact scheme/origin configuration. Terminate TLS at your trusted reverse proxy, use appropriate certificates and firewall rules, and expose only the routes you intend. Do not map management and uploaded artifacts to the same hostname or serve multiple artifacts on one execution origin. Authentication relies on the configured origins and host-only cookies.
+Route management to port4310 and, in subdomain mode, the content hosts to port4311. Preserve each incoming Host header and exact scheme/origin configuration. Terminate TLS at your trusted reverse proxy, use appropriate certificates and firewall rules, and expose only the routes you intend. In subdomain mode, do not map management and uploaded artifacts to the same hostname or serve multiple artifacts on one execution origin. Authentication relies on the configured origins and host-only cookies.
 
 The same options accept `FOLIO_DATA_DIR`, `FOLIO_LISTEN`, `FOLIO_CONTENT_LISTEN`, `FOLIO_APP_URL` and `FOLIO_CONTENT_URL`. Client FOLIO_URL is separate from server FOLIO_APP_URL. Bind addresses control reachability; advertised URLs control links and security checks.
 
