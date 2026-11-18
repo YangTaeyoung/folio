@@ -214,7 +214,7 @@ func serve(ctx context.Context, args []string) error {
 	listen := f.String("listen", env("FOLIO_LISTEN", "127.0.0.1:4310"), "Management bind address")
 	contentListen := f.String("content-listen", env("FOLIO_CONTENT_LISTEN", "127.0.0.1:4311"), "Content bind address")
 	app := f.String("app-url", env("FOLIO_APP_URL", "http://folio.localhost:4310"), "Advertised management origin")
-	content := f.String("content-url", env("FOLIO_CONTENT_URL", "http://{artifact}.content.folio.localhost:4311"), "Artifact-isolated content origin template")
+	content := f.String("content-url", env("FOLIO_CONTENT_URL", ""), "Artifact content URL template: {artifact} in the path serves under the management origin (default <app-url>/c/{artifact}); in the host it gives each artifact its own hostname")
 	dev := f.Bool("dev", false, "Allow source build without embedded UI; use Vite separately")
 	dcProvider := f.String("domainconnect-provider", env("FOLIO_DOMAINCONNECT_PROVIDER", ""), "Provider ID for an approved Domain Connect template")
 	dcService := f.String("domainconnect-service", env("FOLIO_DOMAINCONNECT_SERVICE", ""), "Service ID for that approved template")
@@ -227,18 +227,36 @@ func serve(ctx context.Context, args []string) error {
 	if !*dev && !webassets.Ready() {
 		return errors.New("embedded UI missing; run make build or use a release binary (development: --dev)")
 	}
-	// Bind both before announcing readiness; no half-started management service.
+	layout, e := server.ResolveContentURL(*app, *content)
+	if e != nil {
+		return e
+	}
+	*content = layout.Template
+	contentListenSet := os.Getenv("FOLIO_CONTENT_LISTEN") != ""
+	f.Visit(func(fl *flag.Flag) {
+		if fl.Name == "content-listen" {
+			contentListenSet = true
+		}
+	})
+	// Bind every listener before announcing readiness; no half-started management service.
 	l, e := net.Listen("tcp", *listen)
 	if e != nil {
 		return e
 	}
 	defer l.Close()
-	cl, e := net.Listen("tcp", *contentListen)
-	if e != nil {
-		return e
+	var cl net.Listener
+	contentOrigin := listenerOrigin(l.Addr())
+	if !layout.PathMode {
+		cl, e = net.Listen("tcp", *contentListen)
+		if e != nil {
+			return e
+		}
+		defer cl.Close()
+		contentOrigin = listenerOrigin(cl.Addr())
+	} else if contentListenSet {
+		fmt.Fprintln(os.Stderr, "Content listener disabled: content is served under the management origin")
 	}
-	defer cl.Close()
-	manager := &dns.Manager{DataDir: *data, AppURL: *app, ContentURL: *content, Cloudflared: *cloudflared, AppOrigin: listenerOrigin(l.Addr()), ContentOrigin: listenerOrigin(cl.Addr())}
+	manager := &dns.Manager{DataDir: *data, AppURL: *app, ContentURL: *content, Cloudflared: *cloudflared, AppOrigin: listenerOrigin(l.Addr()), ContentOrigin: contentOrigin}
 	defer manager.Close()
 	if *cert != "" {
 		if e = manager.ImportCertificate(*cert); e != nil {
@@ -267,7 +285,9 @@ func serve(ctx context.Context, args []string) error {
 	b := &http.Server{Handler: s.ContentHandler(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
 	errs := make(chan error, 2)
 	go func() { errs <- a.Serve(l) }()
-	go func() { errs <- b.Serve(cl) }()
+	if cl != nil {
+		go func() { errs <- b.Serve(cl) }()
+	}
 	fmt.Fprintln(os.Stderr, "Folio", version, "ready:", *app, "(management)")
 	fmt.Fprintln(os.Stderr, "Content:", *content)
 	if token := s.BootstrapToken(); token != "" {
