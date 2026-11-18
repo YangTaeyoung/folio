@@ -146,7 +146,7 @@ def main():
                 for locale, catalog in catalogs.items():
                     page.evaluate('(locale) => localStorage.setItem("folio.locale", locale)', locale)
                     page.reload()
-                    expect(guide.get_by_role('heading', name=catalog['에이전트 연결'], exact=True)).to_be_visible()
+                    expect(guide.get_by_role('heading', name=catalog['사용할 에이전트 선택'], exact=True)).to_be_visible()
                     expect(guide.get_by_role('button', name=catalog['연결 명령 복사'], exact=True)).to_be_visible()
                     for name in registrations:
                         guide.get_by_role('button', name=name, exact=True).click()
