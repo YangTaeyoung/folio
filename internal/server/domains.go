@@ -220,7 +220,7 @@ func (s *Server) domains(w http.ResponseWriter, r *http.Request, p principal) er
 			for _, host := range in.Hostnames {
 				allowed := strings.EqualFold(host, strings.Split(s.appHost, ":")[0])
 				if !allowed {
-					_, allowed = s.artifactForHost(host)
+					_, allowed = s.artifactForSite(host)
 					if !allowed {
 						for _, d := range s.st.Domains {
 							if d.Hostname == host {
@@ -316,7 +316,7 @@ func (s *Server) domains(w http.ResponseWriter, r *http.Request, p principal) er
 		if strings.EqualFold(in.Hostname, appURL.Hostname()) {
 			return fail(409, "hostname_reserved", "Management hostname cannot execute artifact content")
 		}
-		if _, ok := s.artifactForHost(in.Hostname); ok {
+		if _, ok := s.artifactForSite(in.Hostname); ok {
 			return fail(409, "hostname_exists", "Hostname is already bound")
 		}
 		for _, d := range s.st.Domains {
