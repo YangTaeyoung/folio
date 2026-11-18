@@ -33,3 +33,5 @@ Package copyright licenses do not transfer ownership of the depicted service nam
 ## Radix Select
 
 `@radix-ui/react-select` and its Radix primitive dependencies are MIT licensed by WorkOS. Source and licenses: https://github.com/radix-ui/primitives . Folio bundles these primitives locally for its Select controls; no Radix hosted service is used. axe-core (https://github.com/dequelabs/axe-core, MPL-2.0) is a development-only accessibility test dependency and is not included in the application runtime bundle.
+
+Antigravity CLI service mark: unmodified official SVG from https://antigravity.google/favicon.svg, retrieved 2026-11-19. Google product names and trademarks remain the property of Google. Used to identify the integration.

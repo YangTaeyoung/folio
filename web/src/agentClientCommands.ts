@@ -1,5 +1,5 @@
 export type AgentClient =
-  "codex" | "claudecode" | "geminicli" | "vscode" | "cursor" | "opencode";
+  "codex" | "claudecode" | "antigravity" | "vscode" | "cursor" | "opencode";
 export type GuideShell = "posix" | "powershell";
 
 /** Treat every displayed value as data, including origins with quote characters. */
@@ -43,8 +43,8 @@ export function registrationCommand(
       return "codex mcp add folio -- folio mcp";
     case "claudecode":
       return "claude mcp add --scope user --transport stdio folio -- folio mcp";
-    case "geminicli":
-      return "gemini mcp add --scope user --transport stdio folio folio mcp";
+    case "antigravity":
+      return "agy mcp add --type stdio folio folio mcp";
     case "vscode": {
       const configuration = JSON.stringify({
         name: "folio",
@@ -57,9 +57,7 @@ export function registrationCommand(
         : `code --add-mcp ${quotePosix(configuration)}`;
     }
     case "cursor":
-      return shell === "powershell"
-        ? 'New-Item -ItemType Directory -Force "$HOME/.cursor" | Out-Null\ncursor "$HOME/.cursor/mcp.json"'
-        : 'mkdir -p "$HOME/.cursor"\ncursor "$HOME/.cursor/mcp.json"';
+      return "folio connect --client cursor";
     case "opencode":
       return "opencode mcp add folio -- folio mcp";
   }
@@ -71,12 +69,12 @@ export function verificationCommand(client: AgentClient): string {
       return "codex mcp list\ncodex mcp get folio";
     case "claudecode":
       return "claude mcp list\nclaude mcp get folio";
-    case "geminicli":
-      return "gemini mcp list";
+    case "antigravity":
+      return "agy mcp list";
     case "vscode":
-      return "MCP: List Servers";
+      return "";
     case "cursor":
-      return "agent mcp list\nagent mcp list-tools folio";
+      return "";
     case "opencode":
       return "opencode mcp list";
   }
@@ -87,3 +85,69 @@ export const cursorConfiguration = JSON.stringify(
   null,
   2,
 );
+
+/** One paste performs authentication, registration and an authenticated API check.
+ * Credentials travel to folio login through stdin and never enter MCP config.
+ * The quoted here-document also keeps its contents out of bash's argv.
+ */
+export function connectionCommand(
+  client: AgentClient,
+  origin: string,
+  token: string,
+  shell: GuideShell,
+): string {
+  const executable = {
+    codex: "codex",
+    claudecode: "claude",
+    antigravity: "agy",
+    vscode: "code",
+    cursor: "folio",
+    opencode: "opencode",
+  }[client];
+  const registration = registrationCommand(client, shell);
+  const verification = verificationCommand(client);
+  if (shell === "powershell") {
+    const commands = [
+      `    $folioToken | folio login --url ${quotePowerShell(origin)} --token-stdin`,
+      "    if ($LASTEXITCODE -ne 0) { throw 'Folio login failed.' }",
+      `    ${registration}`,
+      "    if ($LASTEXITCODE -ne 0) { throw 'MCP registration failed.' }",
+      "    folio doctor",
+      "    if ($LASTEXITCODE -ne 0) { throw 'Folio connection check failed.' }",
+      ...verification
+        .split("\n")
+        .filter(Boolean)
+        .flatMap((command) => [
+          `    ${command}`,
+          "    if ($LASTEXITCODE -ne 0) { throw 'MCP verification failed.' }",
+        ]),
+    ];
+    return [
+      "& {",
+      "  $ErrorActionPreference = 'Stop'",
+      "  Get-Command folio -ErrorAction Stop | Out-Null",
+      ...(executable !== "folio"
+        ? [`  Get-Command ${executable} -ErrorAction Stop | Out-Null`]
+        : []),
+      `  $folioToken = ${quotePowerShell(token)}`,
+      "  try {",
+      ...commands,
+      "  } finally {",
+      "    Remove-Variable folioToken -ErrorAction SilentlyContinue",
+      "  }",
+      "}",
+    ].join("\n");
+  }
+  const script = [
+    "set -euo pipefail",
+    "command -v folio >/dev/null",
+    ...(executable !== "folio" ? [`command -v ${executable} >/dev/null`] : []),
+    `printf '%s' ${quotePosix(token)} | folio login --url ${quotePosix(origin)} --token-stdin`,
+    registration,
+    "folio doctor",
+    ...verification.split("\n").filter(Boolean),
+  ].join("\n");
+  let delimiter = "FOLIO_CONNECT";
+  while (script.split("\n").includes(delimiter)) delimiter += "_";
+  return `bash <<'${delimiter}'\n${script}\n${delimiter}`;
+}

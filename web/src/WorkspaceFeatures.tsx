@@ -12,7 +12,12 @@ import {
   X,
 } from "lucide-react";
 import { api, bytes, date, json } from "./api";
-import { ArtifactPreview, VisibilityIcon, visibilityLabels } from "./Artifacts";
+import {
+  ArtifactPreview,
+  VisibilityIcon,
+  visibilityLabels,
+  artifactOpenURL,
+} from "./Artifacts";
 import { CopyButton, ErrorBox, Field, Spinner } from "./ui";
 import { number, t, useLocale } from "./i18n";
 import type { Artifact, User, Version } from "./types";
@@ -53,7 +58,6 @@ interface CollectionDraft {
 }
 export function CollectionsView({
   user,
-  onOpen,
   onShare,
 }: {
   user: User;
@@ -139,6 +143,7 @@ export function CollectionsView({
         .includes(search.toLocaleLowerCase()),
   );
   function beginCreate() {
+    if (draft) return;
     setError(null);
     setNotice("");
     setSearch("");
@@ -228,7 +233,7 @@ export function CollectionsView({
         </div>
         <button
           className="button primary"
-          disabled={busy}
+          disabled={busy || !!draft}
           onClick={beginCreate}
         >
           <Plus size={17} />
@@ -248,7 +253,9 @@ export function CollectionsView({
           {t("컬렉션을 불러오는 중")}
         </div>
       ) : (
-        <div className="collections-layout">
+        <div
+          className={`collections-layout${draft && !collections.length ? " collections-layout-empty" : ""}`}
+        >
           <nav className="collections-nav" aria-label={t("컬렉션 목록")}>
             {!collections.length && (
               <p className="workspace-feature-muted">
@@ -291,151 +298,234 @@ export function CollectionsView({
                   void save();
                 }}
               >
-                <header className="workspace-feature-subheading">
+                <header className="workspace-feature-subheading collection-editor-heading">
                   <h2>{draft.id ? t("컬렉션 편집") : t("새 컬렉션")}</h2>
                   <button
                     type="button"
-                    className="button ghost compact"
+                    className="icon-button"
+                    aria-label={t("닫기")}
                     disabled={busy}
                     onClick={() => setDraft(null)}
                   >
-                    <X size={16} />
-                    {t("취소")}
+                    <X size={18} />
                   </button>
                 </header>
-                <Field label={t("이름")}>
-                  <input
-                    required
-                    maxLength={200}
-                    value={draft.name}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setDraft({ ...draft, name: e.target.value })
-                    }
-                    autoFocus
-                  />
-                </Field>
-                <Field label={t("설명")}>
-                  <textarea
-                    rows={2}
-                    maxLength={4000}
-                    value={draft.description}
-                    disabled={busy}
-                    onChange={(e) =>
-                      setDraft({ ...draft, description: e.target.value })
-                    }
-                  />
-                </Field>
-                <Field
-                  label={t("공유 범위")}
-                  hint={t(
-                    "컬렉션에 추가해도 아티팩트의 접근 권한은 바뀌지 않습니다.",
-                  )}
+                <div className="collection-name-field">
+                  <Field label={t("이름")}>
+                    <input
+                      required
+                      maxLength={200}
+                      value={draft.name}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setDraft({ ...draft, name: e.target.value })
+                      }
+                      autoFocus
+                    />
+                  </Field>
+                </div>
+                <details className="collection-editor-disclosure collection-description">
+                  <summary>
+                    {t("설명")}
+                    {draft.description && <span>{draft.description}</span>}
+                  </summary>
+                  <Field label={t("설명")}>
+                    <textarea
+                      rows={2}
+                      maxLength={4000}
+                      value={draft.description}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setDraft({ ...draft, description: e.target.value })
+                      }
+                    />
+                  </Field>
+                </details>
+                <section
+                  className="collection-selection"
+                  aria-labelledby={`${collectionHeading}-selection`}
                 >
-                  <Select
-                    value={draft.visibility}
-                    disabled={busy}
-                    onValueChange={(value) =>
-                      setDraft({
-                        ...draft,
-                        visibility: value as
-                          "private" | "organization",
-                      })
-                    }
+                  <div className="collection-selection-heading">
+                    <h3 id={`${collectionHeading}-selection`}>
+                      {t("선택한 아티팩트")}
+                    </h3>
+                    <span className="workspace-feature-muted" role="status">
+                      {t("{count}개", { count: draft.artifactIds.length })}
+                    </span>
+                  </div>
+                  {!draft.artifactIds.length && (
+                    <p className="collection-selection-empty">
+                      {t("아래에서 아티팩트를 추가하세요.")}
+                    </p>
+                  )}
+                  {!!draft.artifactIds.length && (
+                    <p className="collection-order-hint">
+                      {t(
+                        "목록에서 추가한 순서대로 표시됩니다. 화살표로 순서를 바꿀 수 있습니다.",
+                      )}
+                    </p>
+                  )}
+                  <ol className="collection-order">
+                    {draft.artifactIds.map((id, index) => {
+                      const artifact = known.get(id);
+                      const title = artifact?.title || t("아티팩트");
+                      return (
+                        <li key={id}>
+                          <span
+                            className="collection-order-number"
+                            aria-hidden="true"
+                          >
+                            {index + 1}
+                          </span>
+                          {artifact && (
+                            <div
+                              className="collection-editor-thumbnail"
+                              aria-hidden="true"
+                              inert
+                            >
+                              <ArtifactPreview artifact={artifact} />
+                            </div>
+                          )}
+                          <div className="collection-editor-artifact-copy">
+                            <strong>{title}</strong>
+                            <small>
+                              <Check size={12} />
+                              {t("선택됨")}
+                              {artifact && (
+                                <>
+                                  {" "}
+                                  · {artifact.kind?.toUpperCase() ||
+                                    "ARTIFACT"}{" "}
+                                  · {visibilityLabels[artifact.visibility]}
+                                </>
+                              )}
+                            </small>
+                          </div>
+                          <div className="collection-order-actions">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              disabled={busy || index === 0}
+                              aria-label={t("{title} 위로 이동", { title })}
+                              onClick={() => move(index, -1)}
+                            >
+                              <ArrowUp size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              disabled={
+                                busy || index === draft.artifactIds.length - 1
+                              }
+                              aria-label={t("{title} 아래로 이동", { title })}
+                              onClick={() => move(index, 1)}
+                            >
+                              <ArrowDown size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              disabled={busy}
+                              aria-label={t("{title} 컬렉션에서 제거", {
+                                title,
+                              })}
+                              onClick={() =>
+                                setDraft({
+                                  ...draft,
+                                  artifactIds: draft.artifactIds.filter(
+                                    (v) => v !== id,
+                                  ),
+                                })
+                              }
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+                <section className="collection-picker">
+                  <Field label={t("추가할 아티팩트 찾기")}>
+                    <input
+                      type="search"
+                      value={search}
+                      disabled={busy}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={t("제목 또는 설명 검색")}
+                    />
+                  </Field>
+                  <div className="collection-choices">
+                    {choices.map((a) => (
+                      <button
+                        type="button"
+                        key={a.id}
+                        disabled={busy || draft.artifactIds.length >= 500}
+                        aria-label={t("{title} 컬렉션에 추가", {
+                          title: a.title,
+                        })}
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            artifactIds: [...draft.artifactIds, a.id],
+                          })
+                        }
+                      >
+                        <div
+                          className="collection-editor-thumbnail"
+                          aria-hidden="true"
+                          inert
+                        >
+                          <ArtifactPreview artifact={a} />
+                        </div>
+                        <span className="collection-editor-artifact-copy">
+                          <strong>{a.title}</strong>
+                          <small>
+                            {a.kind?.toUpperCase() || "ARTIFACT"} ·{" "}
+                            {visibilityLabels[a.visibility]}
+                          </small>
+                        </span>
+                        <Plus size={16} aria-hidden="true" />
+                      </button>
+                    ))}
+                    {!choices.length && (
+                      <p className="workspace-feature-muted">
+                        {t("추가할 수 있는 아티팩트가 없습니다.")}
+                      </p>
+                    )}
+                  </div>
+                </section>
+                <details className="collection-editor-disclosure collection-sharing">
+                  <summary>
+                    {t("공유 범위")}
+                    <span>
+                      {draft.visibility === "private"
+                        ? t("나만 보기")
+                        : t("조직 공유")}
+                    </span>
+                  </summary>
+                  <Field
+                    label={t("공유 범위")}
+                    hint={t(
+                      "컬렉션에 추가해도 아티팩트의 접근 권한은 바뀌지 않습니다.",
+                    )}
                   >
-                    <option value="private">{t("나만 보기")}</option>
-                    <option value="organization">{t("조직 공유")}</option>
-                  </Select>
-                </Field>
-                <h3>{t("아티팩트 순서")}</h3>
-                {!draft.artifactIds.length && (
-                  <p className="workspace-feature-muted">
-                    {t("아래에서 아티팩트를 추가하세요.")}
-                  </p>
-                )}
-                <ol className="collection-order">
-                  {draft.artifactIds.map((id, index) => (
-                    <li key={id}>
-                      <span>{known.get(id)?.title || t("아티팩트")}</span>
-                      <div>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          disabled={busy || index === 0}
-                          aria-label={t("{title} 위로 이동", {
-                            title: known.get(id)?.title || t("아티팩트"),
-                          })}
-                          onClick={() => move(index, -1)}
-                        >
-                          <ArrowUp size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          disabled={
-                            busy || index === draft.artifactIds.length - 1
-                          }
-                          aria-label={t("{title} 아래로 이동", {
-                            title: known.get(id)?.title || t("아티팩트"),
-                          })}
-                          onClick={() => move(index, 1)}
-                        >
-                          <ArrowDown size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          disabled={busy}
-                          aria-label={t("{title} 컬렉션에서 제거", {
-                            title: known.get(id)?.title || t("아티팩트"),
-                          })}
-                          onClick={() =>
-                            setDraft({
-                              ...draft,
-                              artifactIds: draft.artifactIds.filter(
-                                (v) => v !== id,
-                              ),
-                            })
-                          }
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <Field label={t("추가할 아티팩트 찾기")}>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("제목 또는 설명 검색")}
-                  />
-                </Field>
-                <div className="collection-choices">
-                  {choices.map((a) => (
-                    <button
-                      type="button"
-                      key={a.id}
-                      disabled={busy || draft.artifactIds.length >= 500}
-                      onClick={() =>
+                    <Select
+                      value={draft.visibility}
+                      disabled={busy}
+                      onValueChange={(value) =>
                         setDraft({
                           ...draft,
-                          artifactIds: [...draft.artifactIds, a.id],
+                          visibility: value as "private" | "organization",
                         })
                       }
                     >
-                      <Plus size={15} />
-                      <span>{a.title}</span>
-                      <small>{visibilityLabels[a.visibility]}</small>
-                    </button>
-                  ))}
-                  {!choices.length && (
-                    <p className="workspace-feature-muted">
-                      {t("추가할 수 있는 아티팩트가 없습니다.")}
-                    </p>
-                  )}
-                </div>
+                      <option value="private">{t("나만 보기")}</option>
+                      <option value="organization">{t("조직 공유")}</option>
+                    </Select>
+                  </Field>
+                </details>
                 <footer className="workspace-feature-footer">
                   <button
                     type="button"
@@ -536,16 +626,16 @@ export function CollectionsView({
                 <div className="collection-artifacts">
                   {items.map((a) => (
                     <article key={a.id}>
-                      <button
+                      <a
                         className="collection-artifact-open"
-                        onClick={() => onOpen(a)}
+                        href={artifactOpenURL(a)}
                       >
                         <ArtifactPreview artifact={a} />
                         <span>
                           <strong>{a.title}</strong>
                           <small>{a.description || t("설명 없음")}</small>
                         </span>
-                      </button>
+                      </a>
                       <div className="collection-artifact-meta">
                         <span className={`scope-label scope-${a.visibility}`}>
                           <VisibilityIcon value={a.visibility} />

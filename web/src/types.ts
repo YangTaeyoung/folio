@@ -94,6 +94,13 @@ export interface Domain {
   verifiedAt: string;
 }
 export interface Audit {
+  category?: string;
+  targetType?: string;
+  targetName?: string;
+  targetUrl?: string;
+  targetNameCurrent?: boolean;
+  snapshot?: boolean;
+  changes?: { field: string; before: unknown; after: unknown }[];
   id: string;
   actorId: string;
   actorName: string;

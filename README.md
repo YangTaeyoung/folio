@@ -39,6 +39,19 @@ folio serve --data-dir ./folio-data
 
 The first-run URL appears in the terminal. Open it and create your organization and administrator. There is no default password or open registration. The admin creates other accounts in **Members**.
 
+## Install on your infrastructure
+
+| Environment | Installation | Persistent data |
+| --- | --- | --- |
+| Laptop or server | [Verified release binary](INSTALL.md#release-binary) | Private local directory |
+| Docker host | [Docker Compose](INSTALL.md#docker-compose) | Named volume, non-root container |
+| Kubernetes | [Kustomize manifests](deploy/kubernetes/README.md) | PVC, one replica, optional TLS Ingress |
+| Linux service | [systemd](INSTALL.md#linux-systemd-service) | `/var/lib/folio` |
+| macOS background app | [launchd user agent](INSTALL.md#macos-background-service) | User's Application Support directory |
+| Disconnected network | [Air-gap transfer](INSTALL.md#offline-and-air-gap-installation) | Same storage and backup contract |
+
+Container images are built from source or mirrored to your registry; the release workflow publishes binary archives and has no container publication step. No external database, cloud login or model API is required. Keep a single Folio process per data directory, including on Kubernetes.
+
 ## A place for the work your agents make
 
 - **Personal and team libraries:** ordered private/team collections, tags, favorites, grid/list views and permission-filtered local body search. Collections never change artifact access.
@@ -136,4 +149,4 @@ Folio runs uploaded content in a sandbox on per-artifact hostnames. Uploaded con
 
 Choose system, light or dark appearance beside the language picker. The preference stays on your device. Shared Radix menus, locally bundled service icons and contrast-tested controls work without a CDN. Upload your profile photo under **My account**, and an administrator can update the organization photo under **Organization settings**. JPEG/PNG files are validated and stored on the Folio server.
 
-The **Agents** page provides separate setup and verification commands for Codex, Claude Code, Gemini CLI, VS Code/Copilot, Cursor and OpenCode, with JSON merge guidance where a client requires it. [Appearance and contrast references](docs/references/appearance.md) · [Photo permissions and recovery](docs/references/profile-photos.md) · [Client command sources](docs/references/agent-connections.md).
+The **Agents** page offers one copy-and-run connection command for Codex, Claude Code, Antigravity CLI (`agy`), VS Code/Copilot, Cursor and OpenCode. An explicit copy action issues a scoped, expiring token and combines private CLI login, client registration and connection checks. Cursor configuration is merged additively and conflicting entries are preserved. [Appearance and contrast references](docs/references/appearance.md) · [Photo permissions and recovery](docs/references/profile-photos.md) · [Client command sources](docs/references/agent-connections.md).

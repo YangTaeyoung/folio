@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: folio
+data:
+  FOLIO_APP_URL: http://folio.localhost:4310
+  FOLIO_CONTENT_URL: ""

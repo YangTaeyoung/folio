@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 from playwright.sync_api import sync_playwright, expect
+from browser_controls import choose
 
 
 def free_port():
@@ -30,9 +31,9 @@ def main():
     registrations = {
         'Codex': 'codex mcp add folio -- folio mcp',
         'Claude Code': 'claude mcp add --scope user --transport stdio folio -- folio mcp',
-        'Gemini CLI': 'gemini mcp add --scope user --transport stdio folio folio mcp',
+        'Antigravity CLI': 'agy mcp add --type stdio folio folio mcp',
         'VS Code · Copilot': 'code --add-mcp',
-        'Cursor': 'cursor "$HOME/.cursor/mcp.json"',
+        'Cursor': 'folio connect --client cursor',
         'OpenCode': 'opencode mcp add folio -- folio mcp',
     }
     with tempfile.TemporaryDirectory(prefix='folio-agent-guides-') as data, open(output/'server.log', 'w+') as log:
@@ -56,6 +57,7 @@ def main():
                     'name': 'Guide Admin', 'email': 'guide@folio.test', 'password': 'Guide-fixture-only-123!',
                 })
                 assert response.ok, response.text()
+                assert context.request.get(app+'/api/tokens').json()['tokens'] == []
                 page = context.new_page()
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(app+'/#agents')
@@ -73,8 +75,17 @@ def main():
                             button.click()
                             expect(button).to_have_attribute('aria-pressed', 'true')
                             expect(guide.locator('.agent-client-options button[aria-pressed="true"]')).to_have_count(1)
-                            expect(guide.locator('.agent-client-instructions pre').first).to_contain_text(command)
-                            expect(guide.locator('.agent-client-instructions')).to_contain_text('folio_capabilities')
+                            guide.locator('.agent-connection-action button').click()
+                            expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
+                            copied = page.evaluate('navigator.clipboard.readText()')
+                            assert command in copied and '--token-stdin' in copied and app in copied and 'folio doctor' in copied
+                            assert "'folio_" in copied, 'connection command must include the newly issued fixture token'
+                            expect(guide).to_contain_text('folio_capabilities')
+                            # Credentials are not displayed unless explicitly revealed.
+                            if guide.locator('.agent-command-disclosure').get_attribute('open') is None:
+                                guide.locator('.agent-command-disclosure > summary').click()
+                            assert 'folio_' not in guide.locator('.agent-command-text').input_value()
+                            assert '••••••••' in guide.locator('.agent-command-text').input_value()
                             assert 'YOUR_API_TOKEN' not in guide.inner_text()
                             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), (mode, width, name)
                             violations = page.evaluate("""async () => {
@@ -86,21 +97,47 @@ def main():
                             assert not violations, (mode, width, name, violations)
                         page.screenshot(path=str(output/f'{mode}-{width}-agents.png'), full_page=True)
                 checks.append('six-agent-commands-both-themes-three-widths')
-                # Clipboard reflects the active agent and shell, never an API token.
+                # A second copy and a shell change reuse the same issued token.
                 page.set_viewport_size({'width': 1440, 'height': 1100})
                 guide.get_by_role('button', name='Codex', exact=True).click()
-                guide.get_by_role('button', name='등록 명령 복사', exact=True).click()
-                assert page.evaluate('navigator.clipboard.readText()') == registrations['Codex']
-                guide.get_by_role('button', name='Windows · PowerShell', exact=True).click()
-                expect(guide.locator('.agent-setup-step').first).to_contain_text('Read-Host')
-                guide.get_by_role('button', name='VS Code · Copilot', exact=True).click()
-                expect(guide.locator('.agent-client-instructions pre').first).to_contain_text('code --% --add-mcp')
-                guide.get_by_role('button', name='로그인 명령 복사', exact=True).click()
+                before = context.request.get(app+'/api/tokens').json()['tokens']
+                guide.locator('.agent-connection-action button').click()
+                expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
                 copied = page.evaluate('navigator.clipboard.readText()')
-                assert '--token-stdin' in copied and app in copied and 'Read-Host' in copied
-                checks.append('copy-follows-selected-agent-and-shell')
+                assert registrations['Codex'] in copied and '--token-stdin' in copied and app in copied
+                assert len(context.request.get(app+'/api/tokens').json()['tokens']) == len(before)
+                guide.get_by_role('button', name='Windows · PowerShell', exact=True).click()
+                guide.get_by_role('button', name='VS Code · Copilot', exact=True).click()
+                guide.locator('.agent-connection-action button').click()
+                expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
+                copied = page.evaluate('navigator.clipboard.readText()')
+                assert copied.startswith('& {') and 'code --% --add-mcp' in copied and '--token-stdin' in copied
+                assert len(context.request.get(app+'/api/tokens').json()['tokens']) == len(before)
+                checks.append('single-copy-includes-token-login-registration-verification-and-reuses-token')
+                # Revocation unlocks options; a new explicit copy applies opt-in scopes.
+                csrf = response.json()['csrfToken']
+                records = context.request.get(app+'/api/tokens').json()['tokens']
+                cursor = [record for record in records if record['name'] == 'Folio · Cursor'][-1]
+                revoked = context.request.delete(app+'/api/tokens/'+cursor['id'], headers={'Origin': app, 'X-CSRF-Token': csrf})
+                assert revoked.status == 204
+                guide.get_by_role('button', name='Cursor', exact=True).click()
+                guide.locator('.agent-connection-options > summary').click()
+                expect(guide.get_by_label('공유 권한 추가', exact=True)).to_be_enabled()
+                choose(guide.get_by_label('토큰 만료', exact=True), '30')
+                guide.get_by_label('공유 권한 추가', exact=True).check()
+                guide.get_by_label('검토 권한 추가', exact=True).check()
+                guide.locator('.agent-connection-action button').click()
+                expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
+                records = context.request.get(app+'/api/tokens').json()['tokens']
+                fresh = [record for record in records if record['name'] == 'Folio · Cursor'][-1]
+                assert fresh['id'] != cursor['id']
+                assert fresh['scopes'] == ['read', 'publish', 'share', 'review']
+                from datetime import datetime
+                duration = datetime.fromisoformat(fresh['expiresAt'].replace('Z', '+00:00')) - datetime.fromisoformat(fresh['createdAt'].replace('Z', '+00:00'))
+                assert abs(duration.total_seconds() - 30 * 86400) < 2
+                checks.append('revoked-token-renewal-and-opt-in-scopes-expiry')
                 # Native buttons provide Tab/Space interaction without a custom tab model.
-                button = guide.get_by_role('button', name='Gemini CLI', exact=True)
+                button = guide.get_by_role('button', name='Antigravity CLI', exact=True)
                 button.focus()
                 page.keyboard.press('Space')
                 expect(button).to_have_attribute('aria-pressed', 'true')
@@ -109,11 +146,11 @@ def main():
                 for locale, catalog in catalogs.items():
                     page.evaluate('(locale) => localStorage.setItem("folio.locale", locale)', locale)
                     page.reload()
-                    expect(guide.get_by_role('heading', name=catalog['2. 에이전트 연결'], exact=True)).to_be_visible()
-                    expect(guide.get_by_role('button', name=catalog['로그인 명령 복사'], exact=True)).to_be_visible()
+                    expect(guide.get_by_role('heading', name=catalog['에이전트 연결'], exact=True)).to_be_visible()
+                    expect(guide.get_by_role('button', name=catalog['연결 명령 복사'], exact=True)).to_be_visible()
                     for name in registrations:
                         guide.get_by_role('button', name=name, exact=True).click()
-                        expect(guide.locator('.agent-client-heading h4')).to_have_text(catalog['{agent}에 등록'].replace('{agent}', name))
+                        expect(guide.locator('.agent-client-options button[aria-pressed="true"]')).to_have_text(name)
                 checks.append('all-five-locales-and-six-agents')
                 assert not errors, errors
                 result = {'status': 'PASS', 'checks': checks, 'pageErrors': errors, 'contrastStates': len(audits), 'axeContrastViolations': 0}

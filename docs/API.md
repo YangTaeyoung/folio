@@ -53,7 +53,7 @@ Domain: `{id,hostname,artifactId,provider:"manual"|"cloudflare"|"domainconnect",
 - GET /api/admin/settings -> `{organization,policy,appUrl,contentUrl}`
 - PATCH /api/admin/settings `{organizationName?,policy?}` -> same
 - POST /api/admin/cleanup `{dryRun:true|false}` -> `{candidates:[{id,title,reason,sizeBytes}],freedBytes}`
-- GET /api/admin/audit?limit=100 -> `{events:[{id,actorId,actorName,action,targetId,createdAt,detail}]}`
+- GET /api/admin/audit?limit=100 -> legacy `{events:[{id,actorId,actorName,action,targetId,createdAt,detail,...}]}`. Optional `category`, `actor`, `q`, RFC3339 `from`/`to`, and opaque `cursor` filter before limiting. Responses add `total`, `actors` and `nextCursor`; new events may include `category`, `targetType`, `targetName`, `targetUrl`, `snapshot` and allowlisted `changes:[{field,before,after}]`. Administrator only. Historical values are not fabricated. See [activity contract](references/audit-activity.md).
 - GET /api/storage -> `{backends}` (admin only)
 - POST /api/storage `{name,provider,bucket,region,endpoint,prefix,accountName,accessKeyId?,secretAccessKey?,sessionToken?,serviceAccountJson?,connectionString?,accountKey?}` -> `{backend}` (encrypted credentials)
 - POST /api/storage/{id}/test -> `{ok,message}`; perform bounded put/get/delete of random probe key

@@ -19,6 +19,7 @@ export const SERVICE_ICONS = {
   google: { name: "Google", src: "/images/google-signin-icon.png" },
   codex: { name: "Codex", src: "/services/codex.svg", plate: true },
   claudecode: { name: "Claude Code", src: "/services/claudecode.svg" },
+  antigravity: { name: "Antigravity CLI", src: "/services/antigravity.svg" },
   geminicli: {
     name: "Gemini CLI",
     src: "/services/geminicli.svg",

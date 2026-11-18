@@ -3,7 +3,7 @@
   color-scheme: light;
   --muted: #5c6370;
   --theme-muted: var(--muted);
-  --control-line: #7b8493;
+  --control-line: #8590a1;
 }
 .theme-switching *,
 .theme-switching *::before,
@@ -14,21 +14,21 @@
   color-scheme: dark;
   --ink: #edf0f5;
   --muted: #aab3c3;
-  --accent: #a2baff;
+  --accent: #b2c4ff;
   --soft: #24314e;
   --line: #343b48;
   --paper: #15171c;
   --nav: #1d2027;
-  --control-line: #7c879b;
+  --control-line: #657086;
   --theme-ink: var(--ink);
   --theme-muted: var(--muted);
   --theme-paper: var(--paper);
   --theme-surface: #1d2027;
   --theme-raised: #272c36;
   --theme-line: var(--line);
-  --theme-action: #e6ebf4;
-  --theme-action-hover: #cbd4e4;
-  --theme-on-action: #171b24;
+  --theme-action: #4963d2;
+  --theme-action-hover: #526edb;
+  --theme-on-action: #ffffff;
   --theme-accent: var(--accent);
   --theme-accent-bg: var(--soft);
   --theme-accent-line: #526b9e;
@@ -48,7 +48,7 @@
 }
 :root input:not([type="checkbox"]):not([type="radio"]):not(:disabled),
 :root textarea:not(:disabled),
-:root :is(select, .select-control):not(:disabled) {
+:root select:not(:disabled) {
   border-color: var(--control-line);
 }
 .toast .icon-button,
@@ -66,7 +66,7 @@
   color: var(--theme-on-action);
 }
 :root[data-theme="dark"] .topbar-account {
-  color: var(--theme-on-action);
+  color: var(--ink);
 }
 :root[data-theme="dark"] .toast {
   background: #303744;

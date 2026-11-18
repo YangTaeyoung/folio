@@ -156,7 +156,7 @@ components:
 
 **Creative North Star: "The Artifact Workspace"**
 
-Folio is a practical, contemporary workspace whose artifacts carry the visual interest. Cool gray navigation frames a white working canvas; clear sans-serif hierarchy, black primary actions and cobalt selection make finding, opening and sharing work easy to scan. Actual artifact previews lead the library, the reading canvas leads detail, and aligned flat sections make administration legible.
+Folio is a practical, contemporary workspace whose artifacts carry the visual interest. Cool gray navigation frames a white working canvas; clear sans-serif hierarchy, cobalt primary actions and cobalt selection make finding, opening and sharing work easy to scan. Actual artifact previews lead the library, the reading canvas leads detail, and aligned flat sections make administration legible.
 
 This records the built composition overhaul within the user's approved B light-neutral, black-and-cobalt world. Folio keeps its own folded-page mark and locally bundled Pretendard. At login, an original transparent blue-and-white paper sculpture shares the page canvas and crops freely across its edge; the form remains unboxed. On mobile the form takes priority and the artwork stage disappears.
 
@@ -303,7 +303,7 @@ Guest-link management extends the sharing panel with a selected-version form, ex
 
 ### Language Picker
 
-A language icon and the shared Radix Select offer each language under its own name. Use the same picker in authentication, workspace and guest chrome. It has a transparent fill, divider stroke, control radius, minimum height (36px), and the shared keyboard focus treatment. The current locale persists locally and updates the document language. French navigation labels and toolbars can wrap; keep translated controls within their region rather than shrinking labels ([LanguageSelector.tsx:13](web/src/LanguageSelector.tsx#L13), [LanguageSelector.css:1](web/src/LanguageSelector.css#L1), [i18n.tsx:27](web/src/i18n.tsx#L27)).
+A language icon and the shared Radix Select offer each language under its own name. Use an icon-only picker in authentication and the workspace header. Hosted and guest readers omit language and appearance utilities. It has a transparent fill, divider stroke, control radius, minimum height (36px), and the shared keyboard focus treatment. The current locale persists locally and updates the document language. French navigation labels and toolbars can wrap; keep translated controls within their region rather than shrinking labels ([LanguageSelector.tsx:13](web/src/LanguageSelector.tsx#L13), [LanguageSelector.css:1](web/src/LanguageSelector.css#L1), [i18n.tsx:27](web/src/i18n.tsx#L27)).
 
 ### Authentication, Feedback and Motion
 
@@ -313,7 +313,7 @@ Notices and errors state the actual outcome with text as well as color. Toasts u
 
 ### Appearance and identity (v0.6)
 
-The approved B composition supports a system default and explicit light/dark choices. The shared appearance controls sit with language selection in authentication, workspace, shared and guest chrome. `web/public/theme.js` resolves preference before the application paints; `Theme.css` maps canvas, navigation, text, selection, state, action and field-stroke roles. Dark mode keeps the cobalt accent, original paper sculpture and uploaded artifact colors. Stronger supporting text and field strokes satisfy the measured contrast targets in both modes; see [appearance references](docs/references/appearance.md).
+The approved B composition supports a system default and explicit light/dark choices. Appearance controls sit in the authentication and workspace headers; hosted and guest readers omit them. `web/public/theme.js` resolves preference before the application paints; `Theme.css` maps canvas, navigation, text, selection, state, action and field-stroke roles. Dark mode keeps the cobalt accent, original paper sculpture and uploaded artifact colors. Stronger supporting text and field strokes satisfy the measured contrast targets in both modes; see [appearance references](docs/references/appearance.md).
 
 Dropdowns use the common Radix trigger and portalled listbox: aligned labels/icons, a chevron, selected checkmark, visible focus, typeahead, scroll limits and reduced-motion support. They preserve keyboard and modal focus behavior. Integration marks identify actual services without substituting company logos for unknown compatible endpoints. Personal and organization photo editors use a local preview and explicit save/cancel/remove actions; private images replace initials in the workspace shell and member selectors, with an initials fallback.
 
@@ -321,7 +321,7 @@ Dropdowns use the common Radix trigger and portalled listbox: aligned labels/ico
 
 ### Do:
 
-- **Do** keep the gray navigation shell, white canvas, black primary actions and blue active state together.
+- **Do** keep the gray navigation shell, white canvas, cobalt primary actions and blue active state together.
 - **Do** preserve the established desktop/mobile heading scale and compact preview-led tiles.
 - **Do** keep owner, modification time, audience and contextual sharing close to each artifact.
 - **Do** give reading content the broad canvas and keep metadata contextual.
@@ -338,3 +338,10 @@ Dropdowns use the common Radix trigger and portalled listbox: aligned labels/ico
 - **Don't** express sharing scope through color alone or imply that copying a link saves draft permissions.
 - **Don't** treat uploaded artifacts, research references or example-tour styling as shell design tokens.
 - **Don't** turn operational screens into a marketing landing page or replace real task content with decorative cards.
+
+
+## v0.8 operating-surface correction
+
+This revision supersedes earlier scale and interaction notes: a 224px sidebar exposes Library, Collections, Agents and Settings; library filters and administrative tabs are contextual. Header utilities use an icon language menu and a theme-cycle button. The consistent action is cobalt in both modes, with quiet secondary controls and visible focus. Page headings are 24px; controls 32–36px with 13px text; mobile inputs 16px.
+
+Cards are native links into the hosted reader. The reader has explicit information and sharing actions; it has no language or appearance selector that could imply transforming uploaded content. Account and organization editors place photo and editable identity together. Collection metadata is compact, selection/order explicit, optional fields disclosed. Agent setup is client selection and one token-inclusive command copy; Antigravity CLI (`agy`) replaces the old Gemini CLI primary choice. Audit is a compact filtered activity stream with attributed targets and allowlisted changes, not raw authentication event codes. Source/reference contracts: `docs/references/workspace-interaction.md`.

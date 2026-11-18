@@ -215,58 +215,72 @@ export function UserProfileSettings({
         <h2>{t("내 프로필")}</h2>
         <p>{t("이름과 사진은 조직 구성원에게 표시됩니다.")}</p>
       </div>
-      <PhotoEditor
-        name={user.name}
-        avatarUrl={user.avatarUrl}
-        organization={false}
-        onSaved={(value) => onSaved(value as User)}
-      />
-      <form
-        className="profile-name-form"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setBusy(true);
-          setError(null);
-          setSaved(false);
-          try {
-            const result = await api<{ user: User }>(
-              "/api/me",
-              json("PATCH", { name }),
-            );
-            onSaved(result.user);
-            setSaved(true);
-          } catch (e) {
-            setError(photoError(e));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <Field label={t("이름")}>
-          <input
-            value={name}
-            maxLength={100}
-            required
-            autoComplete="name"
-            disabled={busy}
-            onChange={(event) => {
-              setName(event.target.value);
-              setSaved(false);
-            }}
-          />
-        </Field>
-        <button
-          className="button primary"
-          disabled={busy || name.trim() === user.name || !name.trim()}
+      <div className="profile-identity-layout">
+        <PhotoEditor
+          name={name}
+          avatarUrl={user.avatarUrl}
+          organization={false}
+          onSaved={(value) => onSaved(value as User)}
+        />
+        <form
+          className="profile-name-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setBusy(true);
+            setError(null);
+            setSaved(false);
+            try {
+              const result = await api<{ user: User }>(
+                "/api/me",
+                json("PATCH", { name }),
+              );
+              onSaved(result.user);
+              setSaved(true);
+            } catch (e) {
+              setError(photoError(e));
+            } finally {
+              setBusy(false);
+            }
+          }}
         >
-          {busy ? <Spinner /> : <Check size={16} />}
-          {t("이름 저장")}
-        </button>
-        <span role="status" className="profile-photo-status">
-          {saved ? t("이름을 저장했습니다.") : ""}
-        </span>
-      </form>
-      <ErrorBox error={error} />
+          <Field label={t("이름")}>
+            <input
+              value={name}
+              maxLength={100}
+              required
+              autoComplete="name"
+              disabled={busy}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSaved(false);
+              }}
+            />
+          </Field>
+          <dl className="profile-identity-meta">
+            <div>
+              <dt>{t("이메일")}</dt>
+              <dd>{user.email}</dd>
+            </div>
+            <div>
+              <dt>{t("역할")}</dt>
+              <dd>{user.role === "admin" ? t("관리자") : t("구성원")}</dd>
+            </div>
+          </dl>
+          <div className="profile-identity-save">
+            <button
+              className="button primary"
+              disabled={busy || name.trim() === user.name || !name.trim()}
+            >
+              {busy ? <Spinner /> : <Check size={16} />}
+              {t("이름 저장")}
+            </button>
+            <span role="status" className="profile-photo-status">
+              {saved ? t("이름을 저장했습니다.") : ""}
+            </span>
+          </div>
+          <ErrorBox error={error} />
+        </form>
+      </div>
     </section>
   );
 }
@@ -291,6 +305,87 @@ export function OrganizationPhotoSettings({
         organization
         onSaved={(value) => onSaved(value as Organization)}
       />
+    </section>
+  );
+}
+
+export function OrganizationIdentitySettings({
+  organization,
+  onSaved,
+}: {
+  organization: Organization;
+  onSaved: (organization: Organization) => void;
+}) {
+  useLocale();
+  const [name, setName] = useState(organization.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => setName(organization.name), [organization.name]);
+  return (
+    <section className="panel profile-settings">
+      <div className="profile-settings-heading">
+        <h2>{t("조직 정보")}</h2>
+        <p>{t("조직을 알아보기 쉬운 사진이나 로고를 사용하세요.")}</p>
+      </div>
+      <div className="profile-identity-layout">
+        <PhotoEditor
+          name={name}
+          avatarUrl={organization.avatarUrl}
+          organization
+          onSaved={(value) => onSaved(value as Organization)}
+        />
+        <form
+          className="profile-name-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setBusy(true);
+            setError(null);
+            setSaved(false);
+            try {
+              const result = await api<{ organization: Organization }>(
+                "/api/admin/settings",
+                json("PATCH", { organizationName: name }),
+              );
+              onSaved(result.organization);
+              setSaved(true);
+            } catch (error) {
+              setError(photoError(error));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <Field
+            label={t("조직 이름")}
+            hint={t("작업 공간에서 사용할 이름입니다.")}
+          >
+            <input
+              required
+              maxLength={100}
+              value={name}
+              disabled={busy}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSaved(false);
+              }}
+            />
+          </Field>
+          <div className="profile-identity-save">
+            <button
+              className="button primary"
+              disabled={busy || !name.trim() || name === organization.name}
+            >
+              {busy ? <Spinner /> : <Check size={16} />}
+              {t("변경 사항 저장")}
+            </button>
+            <span className="profile-photo-status" role="status">
+              {saved ? t("저장했습니다.") : ""}
+            </span>
+          </div>
+          <ErrorBox error={error} />
+        </form>
+      </div>
     </section>
   );
 }

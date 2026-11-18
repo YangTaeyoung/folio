@@ -26,15 +26,25 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - run: pip install playwright && playwright install --with-deps chromium
+      - run: pip install playwright pyyaml && playwright install --with-deps chromium
+      - name: Install checksum-pinned kubectl for configuration tests
+        run: |
+          curl --fail --silent --show-error --location https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl -o "$RUNNER_TEMP/folio-kubectl"
+          printf '%s  %s\n' '629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7' "$RUNNER_TEMP/folio-kubectl" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/folio-tools"
+          install -m 755 "$RUNNER_TEMP/folio-kubectl" "$RUNNER_TEMP/folio-tools/kubectl"
+          echo "$RUNNER_TEMP/folio-tools" >> "$GITHUB_PATH"
+      - run: python scripts/test_deployment.py
       - run: python scripts/test_install.py --binary ./dist/folio
       - run: python scripts/smoke_cli.py --binary ./dist/folio
       - run: python web/tests/e2e.py --binary ./dist/folio --screenshots .work/e2e
+      - run: python web/tests/reader_navigation.py --binary ./dist/folio --screenshots .work/reader-navigation
       - run: python web/tests/google_auth.py --binary ./dist/folio --screenshots .work/google-e2e
       - run: python web/tests/responsive_admin.py --binary ./dist/folio --screenshots .work/responsive-admin
       - run: python web/tests/collaboration.py --binary ./dist/folio --screenshots .work/collaboration-e2e
       - run: python web/tests/i18n.py --binary ./dist/folio --screenshots .work/i18n-e2e
       - run: python web/tests/theme.py --binary ./dist/folio --screenshots .work/theme-e2e
+      - run: python web/tests/theme.py --binary ./dist/folio --screenshots .work/theme-supplemental --supplemental
       - run: python web/tests/agent_guides.py --binary ./dist/folio --screenshots .work/agent-guides-e2e
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -42,9 +52,11 @@ jobs:
           name: browser-evidence
           path: |
             .work/e2e/
+            .work/reader-navigation/
             .work/google-e2e/
             .work/responsive-admin/
             .work/collaboration-e2e/
             .work/i18n-e2e/
             .work/theme-e2e/
+            .work/theme-supplemental/
             .work/agent-guides-e2e/

@@ -31,6 +31,7 @@ type Props = Omit<
   children: ReactNode;
   required?: boolean;
   form?: string;
+  triggerIcon?: ReactNode;
 };
 function text(node: ReactNode): string {
   return Children.toArray(node)
@@ -77,6 +78,7 @@ export function Select({
   disabled,
   form,
   className = "",
+  triggerIcon,
   ...trigger
 }: Props) {
   useLocale();
@@ -125,18 +127,23 @@ export function Select({
               .filter(Boolean)
               .join(" ") || undefined
           }
-          className={`select-control ${className}`}
+          className={`select-control ${triggerIcon ? "select-icon-only" : ""} ${className}`}
           data-value={value ?? defaultValue ?? items[0]?.value}
         >
-          {selected?.service && (
+          {triggerIcon}
+          {selected?.service && !triggerIcon && (
             <ServiceIcon service={selected.service} size={18} />
           )}
-          <RadixSelect.Value
-            placeholder={items.find((item) => item.value === "")?.label}
-          />
-          <RadixSelect.Icon className="select-chevron">
-            <ChevronDown size={16} />
-          </RadixSelect.Icon>
+          <span className={triggerIcon ? "sr-only" : "select-value"}>
+            <RadixSelect.Value
+              placeholder={items.find((item) => item.value === "")?.label}
+            />
+          </span>
+          {!triggerIcon && (
+            <RadixSelect.Icon className="select-chevron">
+              <ChevronDown size={16} />
+            </RadixSelect.Icon>
+          )}
         </RadixSelect.Trigger>
         <RadixSelect.Portal>
           <RadixSelect.Content
