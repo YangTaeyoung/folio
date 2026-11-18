@@ -12,10 +12,11 @@ import "./LanguageSelector.css";
 export function LanguageSelector() {
   const locale = useLocale();
   return (
-    <label className="language-selector">
-      <Languages size={16} aria-hidden="true" />
+    <div className="language-selector">
       <Select
         aria-label={t("언어")}
+        title={`${t("언어")}: ${localeNames[locale]}`}
+        triggerIcon={<Languages size={17} aria-hidden="true" />}
         value={locale}
         onValueChange={(value) => {
           if (isLocale(value)) setLocale(value);
@@ -27,6 +28,6 @@ export function LanguageSelector() {
           </option>
         ))}
       </Select>
-    </label>
+    </div>
   );
 }

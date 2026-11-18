@@ -77,9 +77,12 @@ def main():
                             failures.append(description)
 
                     def nav(label):
-                        if page.viewport_size['width'] <= 900:
-                            page.get_by_role('button', name='메뉴 열기', exact=True).click()
-                        page.get_by_role('button', name=label, exact=True).click()
+                        settings = page.locator('.settings-navigation')
+                        if not settings.is_visible():
+                            if page.viewport_size['width'] <= 900:
+                                page.get_by_role('button', name='메뉴 열기', exact=True).click()
+                            page.locator('.primary-navigation').get_by_role('button', name='설정', exact=True).click()
+                        settings.get_by_role('button', name=label, exact=True).click()
                         expect(page.get_by_role('heading', name=label, exact=True)).to_be_visible()
                         page.evaluate('document.fonts.ready')
                         if page.viewport_size['width'] <= 900:

@@ -1,13 +1,29 @@
 services:
   folio:
+    image: ${FOLIO_IMAGE:-folio:local}
     build: .
     restart: unless-stopped
+    stop_grace_period: 30s
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:mode=1777,size=256m
     ports:
-      - "127.0.0.1:4310:4310"
-      - "127.0.0.1:4311:4311"
+      - "127.0.0.1:${FOLIO_PORT:-4310}:4310"
+      - "127.0.0.1:${FOLIO_CONTENT_PORT:-4311}:4311"
     environment:
       FOLIO_APP_URL: ${FOLIO_APP_URL:-http://folio.localhost:4310}
       FOLIO_CONTENT_URL: ${FOLIO_CONTENT_URL:-}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'host=$${FOLIO_APP_URL#*://}; wget -q -O /dev/null --header="Host: $$host" http://127.0.0.1:4310/api/bootstrap'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     volumes:
       - folio-data:/data
 volumes:

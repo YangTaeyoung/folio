@@ -229,22 +229,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request, p principal) erro
 	case path == "/api/admin/settings":
 		return s.adminSettings(w, r, p)
 	case path == "/api/admin/audit" && r.Method == "GET":
-		if e := s.require(r, p, true, ""); e != nil {
-			return e
-		}
-		limit := 100
-		if v := r.URL.Query().Get("limit"); v != "" {
-			fmtSscan(v, &limit)
-		}
-		if limit < 1 || limit > 1000 {
-			limit = 100
-		}
-		events := []Audit{}
-		for i := len(s.st.Audit) - 1; i >= 0 && len(events) < limit; i-- {
-			events = append(events, s.st.Audit[i])
-		}
-		writeJSON(w, 200, map[string]any{"events": events})
-		return nil
+		return s.auditEvents(w, r, p)
 	case path == "/api/admin/cleanup" && r.Method == "POST":
 		if e := s.require(r, p, true, ""); e != nil {
 			return e

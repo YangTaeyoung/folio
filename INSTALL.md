@@ -9,7 +9,7 @@ Unix installer:
 ```sh
 curl -fsSL https://raw.githubusercontent.com/YangTaeyoung/folio/main/scripts/install.sh -o /tmp/folio-install.sh
 # Read the script, then:
-FOLIO_VERSION=v0.1.0 FOLIO_INSTALL_DIR="$HOME/.local/bin" sh /tmp/folio-install.sh
+FOLIO_VERSION=v0.8.0 FOLIO_INSTALL_DIR="$HOME/.local/bin" sh /tmp/folio-install.sh
 folio version
 folio serve --data-dir ./folio-data
 ```
@@ -22,7 +22,20 @@ The installer downloads only the executable and verifies the release manifest; i
 
 On an Internet-connected machine, download the release archive and checksum manifest, verify them, then transfer both through your normal approved process. Verify the digest again on the target, extract, and run `folio serve`. No dependency download, license server, telemetry, external fonts, CDN, model API or email service is needed by the core runtime. Optional cloud storage, public DNS and tunnel connections require access to their providers.
 
-For offline Docker, build/pull the image on a connected machine, `docker save folio:TAG -o folio-image.tar`, transfer it and `docker load -i folio-image.tar`. Use the same compose volumes and explicitly select that loaded image instead of rebuilding.
+For offline Docker, build on a connected machine for the target CPU, then transfer the image and a checksum:
+
+```sh
+# On a reviewed source checkout; replace the example tag with your reviewed ref.
+docker build --build-arg VERSION=v0.8.0 -t folio:v0.8.0 .
+docker save folio:v0.8.0 -o folio-image.tar
+sha256sum folio-image.tar > folio-image.tar.sha256
+# On the disconnected Docker host, after transferring both files:
+sha256sum -c folio-image.tar.sha256
+docker load -i folio-image.tar
+FOLIO_IMAGE=folio:v0.8.0 docker compose up -d --no-build --pull never
+```
+
+Use `shasum -a 256` on macOS instead of `sha256sum`. Transfer the Compose file too. Do not label a working-tree build as a released version: check out the exact reviewed tag in a separate source directory first. `docker build --platform linux/amd64 ...` selects an amd64 target; build for `linux/arm64` for ARM nodes. Cross-platform builds require a builder able to execute the target build stages. A Docker archive imported on a workstation does not load Kubernetes nodes: push it to an internal registry reachable by every node, or use your cluster distribution's node-image import procedure. The target needs no npm/Go downloads; source-image builds do.
 
 ## First run and users
 
@@ -64,14 +77,93 @@ For a real provider-approved Domain Connect template, supply all three: `--domai
 
 Public sharing does not open a firewall. Internet ingress is optional. [DNS and Cloudflare guide](docs/dns.md) covers manual records, token provisioning, official browser login and explicit tunnel start/stop. Install the official `cloudflared` executable in PATH for browser login and owned tunnel control. The default container includes the offline Folio core only; a derived image can add a trusted cloudflared binary and persist its normal login certificate location as well as Folio's `/data`. Existing login certificates are never overwritten by Folio.
 
-## Docker
+<a id="docker"></a>
+
+## Docker Compose
 
 ```sh
+cp deploy/compose.env.example .env
+# Review .env, then build from this checkout and start:
 docker compose up --build -d
-docker compose logs folio
+docker compose ps
+# View only in a private terminal: initial logs contain the setup URL.
+docker compose logs --tail 20 folio
 ```
 
-The supplied compose file publishes loopback-only ports and persists `/data` in a named volume. It runs the image as a non-root user. To support a LAN or reverse proxy, deliberately change port bindings and advertised URLs together. Save the actual data volume before upgrades; do not use `docker compose down -v` unless you intend to delete the installation.
+Requires Docker Engine/Desktop with the Compose v2 plugin. The supplied [Compose file](compose.yaml) builds a local `folio:local` image, publishes loopback-only ports and persists `/data` in the `folio-data` named volume. It runs as UID/GID 10001, drops capabilities and uses a read-only image filesystem with writable `/data` and bounded `/tmp`. The healthcheck requests `/api/bootstrap` using the configured management Host, before and after initial setup. It is an HTTP process check, not an external storage connectivity or disaster-recovery check. `/tmp` is limited to 256 MiB; increase its allowance for larger temporary exports/uploads or install on a filesystem with sufficient temporary capacity. Never scale this service above one instance.
+
+Set `FOLIO_APP_URL` to your reverse proxy's exact HTTPS origin. In path mode that one proxy route goes to `127.0.0.1:4310`; artifacts share the management origin and require trusted publishers. For isolated subdomains, also set `FOLIO_CONTENT_URL='https://{artifact}.artifacts.example.internal'`, configure wildcard DNS/TLS, and route artifact hosts to `127.0.0.1:4311`. Preserve the incoming Host header. Port 4311 is published but has no listener in path mode. A proxy in another container cannot reach the host's loopback mapping; attach it to the Compose network and use `folio:4310`/`folio:4311` as upstreams while preserving the public Host. For LAN direct binding, deliberately edit the port bindings and advertised URLs together.
+
+The [release workflow](.github/workflows/release.yml) publishes verified binary archives and has no container publication step; these examples do not assume a GHCR/Docker Hub image. Use a reviewed source ref to build your own immutable tag, push it to a registry you operate and record its digest. Set `FOLIO_IMAGE=registry.example.internal/team/folio@sha256:YOUR_VERIFIED_DIGEST` and start with `docker compose up -d --no-build --pull never` after pulling that exact digest. `--no-build` prevents an accidental rebuild and `--pull never` supports a preloaded air-gap image. No provider credentials or bootstrap token are included in the example environment.
+
+The named volume's actual name includes the Compose project name. Find it with `docker inspect "$(docker compose ps -aq folio)" --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}'` and record the project name before an upgrade. Keep using the same project name and directory; changing them can create a new empty installation. Do not use `docker compose down -v` or delete this volume unless you intend to delete the installation.
+
+For a host bind mount, precreate its directory with owner `10001:10001` and mode `0700` on Linux, then replace the named mount. Folio sets its data directory mode to `0700`, so group access alone does not suffice for an existing directory owned by another UID. On platforms with Docker Desktop, use a named volume unless you have verified bind-mount ownership behavior.
+
+### Compose upgrade and volume backup
+
+Stop the service and ensure no other writer exists before copying any data. The following creates a private, complete archive using the same locally available image, including hidden files and SQLite sidecars:
+
+```sh
+umask 077
+mkdir -p backups
+docker compose stop folio
+docker compose run --rm --no-deps --entrypoint tar folio -C /data -czf - . > backups/folio-data.tar.gz
+# Check the archive locally; treat its contents as credentials.
+tar -tzf backups/folio-data.tar.gz > /dev/null
+# Build a reviewed new source ref, or select your newly verified preloaded image:
+docker compose build folio
+docker compose up -d --no-build --pull never
+docker compose ps
+```
+
+Keep the previous image and matching archive. To restore, stop Folio, attach an **empty replacement volume** at `/data`, and restore using the same image as the backup. With that replacement selected in the Compose file:
+
+```sh
+docker compose run --rm --no-deps -T --entrypoint tar folio -C /data -xzf - < backups/folio-data.tar.gz
+docker compose up -d --no-build --pull never
+```
+
+The replacement volume must be owned by UID/GID 10001. Do not extract over a populated installation or roll back only the executable after a data format change. Restore external object stores from the matching snapshot and follow [restore verification](#backup-and-restore).
+
+## Kubernetes
+
+[Kustomize base and optional Ingress overlay](deploy/kubernetes/README.md) include a persistent volume claim, a ClusterIP Service, Secret wiring, UID/GID 10001, startup/readiness/liveness probes, and a single-replica `Recreate` Deployment. Start with port-forwarding on a private workstation; enable DNS/TLS ingress explicitly. Supply a locally loaded image or your own immutable registry digest. The manifests do not install a cluster, storage provisioner, ingress controller, certificate issuer or public DNS.
+
+SQLite is the metadata store in every deployment mode. Keep exactly one writer and use storage with reliable SQLite file locks. A `ReadWriteOnce` claim alone does not enforce one Pod; do not add an HPA, multiple replicas or a second Deployment using the claim. This package provides persistent single-instance operation with downtime during updates, not active-active/high-availability SQLite.
+
+## Linux systemd service
+
+Install a verified native release at `/usr/local/bin/folio`. On a systemd Linux host:
+
+```sh
+sudo useradd --system --user-group --home-dir /var/lib/folio --shell /usr/sbin/nologin folio
+sudo install -d -m 0750 /etc/folio
+sudo install -m 0600 deploy/systemd/folio.env.example /etc/folio/folio.env
+sudo install -m 0644 deploy/systemd/folio.service /etc/systemd/system/folio.service
+# Review /etc/folio/folio.env and the unit before starting.
+sudo systemctl daemon-reload
+sudo systemctl enable --now folio
+sudo systemctl status folio
+```
+
+Skip user creation if that dedicated account already exists; adapt the `nologin` path to your distribution. The unit creates `/var/lib/folio` owned by `folio`, keeps management on loopback and handles SIGTERM with a 30-second stop allowance. First-run setup appears in `sudo journalctl -u folio`; restrict journal access and do not forward the setup URL to a public log sink. `sudo systemctl stop folio` stops it for a full data backup; restore ownership with `sudo chown -R folio:folio /var/lib/folio` before restarting. Keep optional provider credentials outside the repository and grant only this service account access. For subdomain mode, set both content origin and listener in the private environment file. Native Windows releases can run interactively; this repository does not include a Windows Service wrapper.
+
+## macOS background service
+
+Install a verified native binary under `~/.local/bin/folio`. Copy [the launchd template](deploy/macos/cloud.melona.folio.plist) to `~/Library/LaunchAgents/cloud.melona.folio.plist`, replacing every `/Users/YOUR_USER` with your absolute home path. Plists do not expand `~` or `$HOME` inside these strings. Create private data and log directories first:
+
+```sh
+umask 077
+mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Application Support/Folio" "$HOME/Library/Logs/Folio"
+chmod 700 "$HOME/Library/Application Support/Folio" "$HOME/Library/Logs/Folio"
+# After copying and editing the plist:
+plutil -lint "$HOME/Library/LaunchAgents/cloud.melona.folio.plist"
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/cloud.melona.folio.plist"
+launchctl print "gui/$(id -u)/cloud.melona.folio"
+```
+
+This user agent runs while you are logged in. Read the setup URL privately from `~/Library/Logs/Folio/stderr.log`. Stop it with `launchctl bootout "gui/$(id -u)" "$HOME/Library/LaunchAgents/cloud.melona.folio.plist"` before an upgrade or complete data backup; start again with `bootstrap`. Never run a manual `folio serve` concurrently against this agent's data directory. macOS may require normal downloaded-executable approval on first use.
 
 ## Storage, retention and archives
 

@@ -67,6 +67,9 @@ func run(ctx context.Context, args []string) error {
 	if cmd == "skills" {
 		return installSkill(args)
 	}
+	if cmd == "connect" {
+		return connect(args)
+	}
 	cfg, e := agent.LoadConfig()
 	if e != nil {
 		return e
@@ -197,6 +200,7 @@ func usage() {
 
   folio serve [--data-dir ./data] [--listen 127.0.0.1:4310]
   folio login --url http://folio.localhost:4310 --token-stdin
+  folio connect --client cursor [--config-dir DIRECTORY]
   folio publish --title "My artifact" ./site
   folio publish --artifact ID --base-version VERSION --draft ./site
   folio list [--view mine|shared|archive] [--query text]

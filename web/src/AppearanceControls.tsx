@@ -1,4 +1,3 @@
-import { Select } from "./Select";
 import { useSyncExternalStore } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { LanguageSelector } from "./LanguageSelector";
@@ -22,21 +21,27 @@ export function AppearanceControls() {
     window.folioTheme.get,
   );
   const Icon = theme === "system" ? Monitor : theme === "dark" ? Moon : Sun;
+  const themes: Theme[] = ["system", "light", "dark"];
+  const next = themes[(themes.indexOf(theme) + 1) % themes.length];
+  const labels = {
+    system: t("시스템 설정"),
+    light: t("라이트 모드"),
+    dark: t("다크 모드"),
+  };
   return (
     <div className="appearance-controls">
       <LanguageSelector />
-      <label className="theme-selector">
-        <Icon size={16} aria-hidden="true" />
-        <Select
-          aria-label={t("화면 테마")}
-          value={theme}
-          onValueChange={(value) => window.folioTheme.set(value as Theme)}
-        >
-          <option value="system">{t("시스템 설정")}</option>
-          <option value="light">{t("라이트 모드")}</option>
-          <option value="dark">{t("다크 모드")}</option>
-        </Select>
-      </label>
+      <button
+        type="button"
+        className="theme-toggle icon-button"
+        aria-label={t("화면 테마")}
+        title={`${labels[theme]} → ${labels[next]}`}
+        data-preference={theme}
+        onClick={() => window.folioTheme.set(next)}
+      >
+        <Icon size={17} aria-hidden="true" />
+        <span className="sr-only">{labels[theme]}</span>
+      </button>
     </div>
   );
 }

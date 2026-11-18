@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: folio
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: folio
+  ports:
+    - name: http
+      port: 4310
+      targetPort: http
+    # Unused in path mode. Only route artifact hosts here in subdomain mode.
+    - name: content
+      port: 4311
+      targetPort: content

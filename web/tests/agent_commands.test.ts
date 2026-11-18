@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   loginCommand,
+  connectionCommand,
   registrationCommand,
   quotePosix,
   quotePowerShell,
@@ -36,17 +37,23 @@ test("login sends the token through stdin and keeps the origin literal in Bash a
     );
     for (const shell of ["/bin/bash", "/bin/zsh"].filter(existsSync)) {
       for (const code of [0, 19]) {
-        const result = spawnSync(shell, ["-c", loginCommand(origin, "posix")], {
-          env: {
-            ...process.env,
-            PATH: `${directory}:${process.env.PATH}`,
-            FOLIO_TEST_ARGS: join(directory, "args"),
-            FOLIO_TEST_STDIN: join(directory, "stdin"),
-            FOLIO_TEST_EXIT: String(code),
+        const result = spawnSync(
+          shell,
+          ["-f", "-c", loginCommand(origin, "posix")],
+          {
+            env: {
+              ...process.env,
+              PATH: `${directory}:/usr/bin:/bin`,
+              ZDOTDIR: directory,
+              BASH_ENV: "/dev/null",
+              FOLIO_TEST_ARGS: join(directory, "args"),
+              FOLIO_TEST_STDIN: join(directory, "stdin"),
+              FOLIO_TEST_EXIT: String(code),
+            },
+            input: token + "\n",
+            encoding: "utf8",
           },
-          input: token + "\n",
-          encoding: "utf8",
-        });
+        );
         assert.equal(result.status, code, result.stderr);
         assert.deepEqual(
           readFileSync(join(directory, "args"), "utf8").split("\0"),
@@ -67,7 +74,7 @@ test("registration commands pass only the local stdio launcher, without credenti
     for (const client of [
       "codex",
       "claudecode",
-      "geminicli",
+      "antigravity",
       "vscode",
       "cursor",
       "opencode",
@@ -84,9 +91,13 @@ test("registration commands pass only the local stdio launcher, without credenti
     registrationCommand("opencode", "posix"),
     "opencode mcp add folio -- folio mcp",
   );
-  assert.doesNotMatch(
+  assert.equal(
     registrationCommand("cursor", "posix"),
-    /mcp add|cat >|Set-Content/,
+    "folio connect --client cursor",
+  );
+  assert.equal(
+    registrationCommand("antigravity", "posix"),
+    "agy mcp add --type stdio folio folio mcp",
   );
   const args = spawnSync(
     "/bin/bash",
@@ -123,4 +134,129 @@ test("PowerShell login quotes data and clears its temporary secret allocation", 
     registrationCommand("vscode", "powershell"),
     /^code --% --add-mcp \{\\"name\\":/,
   );
+});
+
+test("one pasted connection script preserves token data and stops on login or registration failure", () => {
+  const directory = mkdtempSync(join(tmpdir(), "folio-connect-command-"));
+  try {
+    const stub =
+      '#!/bin/bash\nprintf "%s\\0" "$0" "$@" >> "$FOLIO_TEST_ARGS"\nif [ "$1" = login ]; then cat > "$FOLIO_TEST_STDIN"; exit "${FOLIO_TEST_LOGIN_EXIT:-0}"; fi\nif [ "$1" = mcp ] && [ "$2" = add ]; then exit "${FOLIO_TEST_REGISTER_EXIT:-0}"; fi\n';
+    for (const executable of [
+      "folio",
+      "codex",
+      "claude",
+      "agy",
+      "code",
+      "opencode",
+    ]) {
+      writeFileSync(join(directory, executable), stub, { mode: 0o700 });
+    }
+    const marker = join(directory, "injected");
+    const origin = `https://folio.example/'\"; touch ${marker}; $(touch ${marker})`;
+    const token = `folio_fixture-'$\`\\$(touch ${marker})`;
+    const guard = ["folio", "codex", "claude", "agy", "code", "opencode"]
+      .map(
+        (name) =>
+          `test "$(command -v ${name})" = ${quotePosix(join(directory, name))} || exit 88`,
+      )
+      .join("\n");
+    for (const shell of ["/bin/bash", "/bin/zsh"].filter(existsSync)) {
+      for (const client of [
+        "codex",
+        "claudecode",
+        "antigravity",
+        "vscode",
+        "cursor",
+        "opencode",
+      ] as const) {
+        for (const loginExit of [0, 19]) {
+          writeFileSync(join(directory, "args"), "");
+          const command = connectionCommand(client, origin, token, "posix");
+          const result = spawnSync(
+            shell,
+            ["-f", "-c", `${guard}\n${command}`],
+            {
+              env: {
+                ...process.env,
+                PATH: `${directory}:/usr/bin:/bin`,
+                ZDOTDIR: directory,
+                BASH_ENV: "/dev/null",
+                FOLIO_TEST_ARGS: join(directory, "args"),
+                FOLIO_TEST_STDIN: join(directory, "stdin"),
+                FOLIO_TEST_LOGIN_EXIT: String(loginExit),
+              },
+              encoding: "utf8",
+            },
+          );
+          assert.equal(result.status, loginExit, result.stderr);
+          const calls = readFileSync(join(directory, "args"), "utf8");
+          assert.equal(readFileSync(join(directory, "stdin"), "utf8"), token);
+          assert.ok(calls.includes(origin));
+          assert.equal(
+            calls.includes(token),
+            false,
+            "token must not enter native executable argv",
+          );
+          assert.equal(calls.includes("doctor"), loginExit === 0);
+          assert.equal(
+            calls
+              .split("\0")
+              .some(
+                (argument) => argument === "add" || argument === "--add-mcp",
+              ),
+            loginExit === 0 && client !== "cursor",
+            `${shell} ${client} exit=${loginExit}: ${JSON.stringify(calls.split("\0"))}`,
+          );
+          assert.equal(existsSync(marker), false);
+          assert.equal(result.stdout.includes(token), false);
+        }
+      }
+    }
+    writeFileSync(join(directory, "args"), "");
+    const failed = spawnSync(
+      "/bin/bash",
+      [
+        "-f",
+        "-c",
+        `${guard}\n${connectionCommand("codex", "https://folio.example", token, "posix")}`,
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: `${directory}:/usr/bin:/bin`,
+          ZDOTDIR: directory,
+          BASH_ENV: "/dev/null",
+          FOLIO_TEST_ARGS: join(directory, "args"),
+          FOLIO_TEST_STDIN: join(directory, "stdin"),
+          FOLIO_TEST_REGISTER_EXIT: "23",
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(failed.status, 23);
+    assert.equal(
+      readFileSync(join(directory, "args"), "utf8").includes("doctor"),
+      false,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("PowerShell one-paste script isolates variables and checks every native exit status", () => {
+  const command = connectionCommand(
+    "antigravity",
+    "https://folio.example/a'b",
+    "folio_'$literal",
+    "powershell",
+  );
+  assert.match(command, /^& \{/);
+  assert.match(command, /\$folioToken = 'folio_''\$literal'/);
+  assert.match(
+    command,
+    /\$folioToken \| folio login --url 'https:\/\/folio.example\/a''b' --token-stdin/,
+  );
+  assert.match(command, /agy mcp add --type stdio folio folio mcp/);
+  assert.match(command, /Remove-Variable folioToken/);
+  assert.equal((command.match(/LASTEXITCODE/g) || []).length, 4);
 });

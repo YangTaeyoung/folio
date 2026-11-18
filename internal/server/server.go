@@ -164,13 +164,20 @@ type backendRecord struct {
 	Secret string
 }
 type Audit struct {
-	ID        string    `json:"id"`
-	ActorID   string    `json:"actorId"`
-	ActorName string    `json:"actorName"`
-	Action    string    `json:"action"`
-	TargetID  string    `json:"targetId"`
-	CreatedAt time.Time `json:"createdAt"`
-	Detail    string    `json:"detail"`
+	Category          string        `json:"category,omitempty"`
+	TargetType        string        `json:"targetType,omitempty"`
+	TargetName        string        `json:"targetName,omitempty"`
+	TargetURL         string        `json:"targetUrl,omitempty"`
+	TargetNameCurrent bool          `json:"targetNameCurrent,omitempty"`
+	Snapshot          bool          `json:"snapshot,omitempty"`
+	Changes           []AuditChange `json:"changes,omitempty"`
+	ID                string        `json:"id"`
+	ActorID           string        `json:"actorId"`
+	ActorName         string        `json:"actorName"`
+	Action            string        `json:"action"`
+	TargetID          string        `json:"targetId"`
+	CreatedAt         time.Time     `json:"createdAt"`
+	Detail            string        `json:"detail"`
 }
 type Garbage struct {
 	BackendID, Key string
@@ -394,7 +401,9 @@ func (s *Server) mutate(fn func() error) error {
 	if e != nil {
 		return e
 	}
+	auditStart := len(s.st.Audit)
 	if e = fn(); e == nil {
+		s.enrichAudit(raw, auditStart)
 		e = s.save()
 	}
 	if e != nil {

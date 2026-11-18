@@ -1,0 +1,34 @@
+# Apply only after scaling Folio to zero and waiting for its Pod to disappear.
+# Edit the image to the exact locally available image used for this backup.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: folio-maintenance
+  namespace: folio
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: maintenance
+      image: folio:local
+      imagePullPolicy: IfNotPresent
+      command: [sh, -ec, "mkdir -p /data/folio; exec sleep 86400"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: folio-data

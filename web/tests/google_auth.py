@@ -107,7 +107,8 @@ def main():
                     expect(page.get_by_role('heading', name='전체 아티팩트', exact=True)).to_be_visible()
                     checks.append('google-default-off-local-password-login')
 
-                    page.get_by_role('button', name='조직 설정', exact=True).click()
+                    page.locator('.primary-navigation').get_by_role('button', name='설정', exact=True).click()
+                    page.locator('.settings-navigation').get_by_role('button', name='조직 설정', exact=True).click()
                     settings = page.locator('.google-auth-settings')
                     expect(settings.get_by_label('Google 로그인 사용', exact=True)).not_to_be_checked()
                     expect(settings.get_by_label('승인된 리디렉션 URI', exact=True)).to_have_value(app + '/api/auth/google/callback')
@@ -153,7 +154,7 @@ def main():
                     page.screenshot(path=str(screenshots / 'settings-mobile.png'), full_page=True)
                     page.set_viewport_size({'width': 1440, 'height': 1080})
 
-                    page.get_by_role('button', name='구성원', exact=True).click()
+                    page.locator('.settings-navigation').get_by_role('button', name='구성원', exact=True).click()
                     page.get_by_role('button', name='구성원 추가', exact=True).click()
                     modal = page.get_by_role('dialog')
                     expect(modal.get_by_label('로그인 방법', exact=True)).to_have_attribute('data-value', 'password')

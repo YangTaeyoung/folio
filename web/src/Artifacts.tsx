@@ -51,6 +51,17 @@ export const visibilityLabels: Record<Visibility, string> = {
     return translate("전체 공개");
   },
 };
+/** Keep an unpublished version explicit; the stable share URL still opens the published version. */
+export function artifactOpenURL(artifact: Artifact) {
+  if (
+    !artifact.reviewEnabled ||
+    artifact.currentVersionId === artifact.publishedVersionId
+  )
+    return artifact.shareUrl;
+  const url = new URL(artifact.shareUrl, window.location.origin);
+  url.searchParams.set("version", artifact.currentVersionId);
+  return url.toString();
+}
 export function VisibilityIcon({
   value,
   size = 14,
@@ -170,19 +181,18 @@ export function ArtifactPreview({
 }
 export function ArtifactCard({
   artifact,
-  onOpen,
   onShare,
 }: {
   artifact: Artifact;
-  onOpen: () => void;
+  onOpen?: () => void;
   onShare: () => void;
 }) {
   useLocale();
   return (
     <article className="artifact-card">
-      <button
+      <a
         className="artifact-open"
-        onClick={onOpen}
+        href={artifactOpenURL(artifact)}
         aria-label={translate("{p0} 열기", { p0: artifact.title })}
       >
         <ArtifactPreview artifact={artifact} />
@@ -202,7 +212,7 @@ export function ArtifactCard({
             artifact.description ||
             translate("설명 없음")}
         </p>
-      </button>
+      </a>
       <div className="artifact-meta">
         <span className="owner-name">
           <Avatar
@@ -460,6 +470,11 @@ export function SharePanel({
           />
         </section>
         <ErrorBox error={a.error} />
+        {canManage && (
+          <div className="guest-share-section">
+            <GuestLinks artifact={artifact} versions={guestVersions} />
+          </div>
+        )}
       </div>
       <footer className="drawer-footer">
         <p className="share-save-status" aria-live="polite">
@@ -493,11 +508,6 @@ export function SharePanel({
           {a.busy ? <Spinner /> : translate("공유 설정 저장")}
         </button>
       </footer>
-      {canManage && (
-        <div className="guest-share-section">
-          <GuestLinks artifact={artifact} versions={guestVersions} />
-        </div>
-      )}
     </Modal>
   );
 }

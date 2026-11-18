@@ -124,18 +124,35 @@ def main():
                         picker = page.locator('.language-selector [role=combobox]').first
                         expect(picker).to_be_attached()
                         if not picker.is_visible():
-                            page.locator('.mobile-header button[aria-controls="workspace-navigation"]').click()
+                            page.locator('.workspace-topbar button[aria-controls="workspace-navigation"]').click()
                         select_value(picker, locale)
                         expect(page.locator('html')).to_have_attribute('lang', locale)
                     def nav(page, locale, label):
-                        if page.viewport_size['width'] < 900 and not page.locator('.sidebar').evaluate('(el) => el.classList.contains("open")'):
-                            page.get_by_role('button', name=catalogs[locale]['메뉴 열기'], exact=True).click()
-                        page.locator('.sidebar').get_by_role('button', name=catalogs[locale][label], exact=True).click()
-                        if page.viewport_size['width'] < 900:
-                            page.wait_for_function('''() => document.querySelector('.sidebar').getBoundingClientRect().right <= 0''')
+                        if not page.locator('.primary-navigation').count():
+                            page.goto(app + '/#library')
+                        def primary(source):
+                            control = page.locator('.primary-navigation').get_by_role('button', name=catalogs[locale][source], exact=True)
+                            if page.viewport_size['width'] < 900 and not page.locator('.sidebar').evaluate("el => el.classList.contains('open')"):
+                                page.get_by_role('button', name=catalogs[locale]['메뉴 열기'], exact=True).click()
+                            control.click()
+                            if page.viewport_size['width'] < 900:
+                                page.wait_for_function("() => document.querySelector('.sidebar').getBoundingClientRect().right <= 0")
+                        if label == '내 계정':
+                            page.get_by_role('button', name=catalogs[locale]['내 계정 열기'], exact=True).click()
+                        elif label in ['컬렉션', '에이전트']:
+                            primary(label)
+                        elif label in ['전체 아티팩트','내 작업','조직 공유함','즐겨찾기','아카이브','휴지통']:
+                            primary('라이브러리')
+                            page.locator('.library-filters').get_by_role('button', name=catalogs[locale][label], exact=True).click()
+                        else:
+                            primary('설정')
+                            page.locator('.settings-navigation').get_by_role('button', name=catalogs[locale][label], exact=True).click()
                     def open_detail(page, locale):
                         nav(page, locale, '전체 아티팩트')
-                        page.locator('.artifact-card').get_by_role('button', name=catalogs[locale]['{p0} 열기'].replace('{p0}', USER_TEXT[0]), exact=True).click()
+                        page.locator('.artifact-card').get_by_role('link', name=catalogs[locale]['{p0} 열기'].replace('{p0}', USER_TEXT[0]), exact=True).click()
+                        expect(page.locator('.viewer')).to_be_visible()
+                        expect(page.locator('.theme-toggle,.language-selector')).to_have_count(0)
+                        page.get_by_role('button', name=catalogs[locale]['아티팩트 상세'], exact=True).click()
                         detail = page.get_by_role('dialog')
                         expect(detail.locator('.detail-version-picker [role=combobox]')).to_be_visible()
                         return detail
@@ -177,7 +194,7 @@ def main():
                         expect(page.get_by_role('heading', name=catalogs[locale]['전체 아티팩트'], exact=True)).to_be_visible()
                         expect(page.locator('.artifact-card')).to_contain_text(USER_TEXT[0])
                         chrome_is_translated(page, locale, 'library')
-                        for label in ['구성원', '저장소와 보관', '도메인', '에이전트', '조직 설정', '백업 및 복원', '컬렉션', '즐겨찾기', '휴지통', '내 계정']:
+                        for label in ['구성원', '저장소와 보관', '도메인', '에이전트', '조직 설정', '백업 및 복원', '컬렉션', '즐겨찾기', '휴지통', '내 계정', '변경 기록']:
                             nav(page, locale, label)
                             expect(page.locator('main h1,main h2').first).to_be_visible()
                             chrome_is_translated(page, locale, label)
@@ -214,7 +231,7 @@ def main():
                         choose(page, locale)
                         # Formatting proof comes from the actual locale-formatted storage meter.
                         nav(page, locale, '전체 아티팩트')
-                        meter = page.locator('.capacity').inner_text()
+                        meter = page.locator('.capacity-inline').inner_text()
                         assert ('1,5 GB' if locale == 'fr' else '1.5 GB') in meter, meter
                         if locale in ['ja', 'zh-CN', 'fr']:
                             page.set_viewport_size({'width': 390, 'height': 844})
@@ -251,6 +268,7 @@ def main():
                         guest_page.add_init_script('localStorage.setItem("folio.locale", ' + json.dumps(locale) + ')')
                         guest_page.goto(guest_url)
                         expect(guest_page.get_by_role('heading', name=catalogs[locale]['공유된 아티팩트'], exact=True)).to_be_visible()
+                        expect(guest_page.locator('.theme-toggle,.language-selector')).to_have_count(0)
                         chrome_is_translated(guest_page, locale, 'guest-password')
                         no_overflow(guest_page, locale + '-guest')
                         guest_ctx.close()

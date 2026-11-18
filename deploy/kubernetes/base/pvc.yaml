@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: folio-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+  # Uses the cluster's default StorageClass. Select a CSI block/local filesystem
+  # with reliable SQLite locks; ReadWriteOnce is not a single-writer guarantee.

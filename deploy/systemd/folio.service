@@ -1,0 +1,24 @@
+[Unit]
+Description=Folio artifact library
+After=network.target
+
+[Service]
+Type=simple
+User=folio
+Group=folio
+StateDirectory=folio
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/folio
+EnvironmentFile=/etc/folio/folio.env
+ExecStart=/usr/local/bin/folio serve --data-dir /var/lib/folio
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

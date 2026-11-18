@@ -1,3 +1,4 @@
+import { AuditActivity } from "./AuditActivity";
 import { AgentClientGuides } from "./AgentClientGuides";
 import {
   ServiceIcon,
@@ -6,7 +7,7 @@ import {
 } from "./ServiceIcon";
 import {
   UserProfileSettings,
-  OrganizationPhotoSettings,
+  OrganizationIdentitySettings,
 } from "./ProfilePhotos";
 import { Select } from "./Select";
 import { t as translate, useLocale } from "./i18n";
@@ -23,8 +24,6 @@ import {
   Link,
   Plus,
   RefreshCw,
-  ShieldCheck,
-  Terminal,
   Trash2,
 } from "lucide-react";
 import { api, bytes, date, json, setCSRF } from "./api";
@@ -33,7 +32,6 @@ import "./ResponsiveAdmin.css";
 import "./AdminSurface.css";
 import type {
   Artifact,
-  Audit,
   Backend,
   Domain,
   Organization,
@@ -45,7 +43,6 @@ import type {
 import {
   Avatar,
   CopyButton,
-  Empty,
   ErrorBox,
   Field,
   Modal,
@@ -59,6 +56,8 @@ export function useResource<T>(path: string, revision = 0) {
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [key, setKey] = useState(0);
+  const requestKey = JSON.stringify([path, revision, key]);
+  const [resolvedKey, setResolvedKey] = useState("");
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -68,16 +67,29 @@ export function useResource<T>(path: string, revision = 0) {
         if (active) setData(r);
       })
       .catch((e) => {
-        if (active) setError(e);
+        if (active) {
+          setError(e);
+          setData(null);
+        }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setResolvedKey(requestKey);
+        }
       });
     return () => {
       active = false;
     };
   }, [path, revision, key]);
-  return { data, error, loading, reload: () => setKey((n) => n + 1), setData };
+  return {
+    data,
+    error,
+    loading,
+    stale: requestKey !== resolvedKey,
+    reload: () => setKey((n) => n + 1),
+    setData,
+  };
 }
 export function PageHeading({
   title,
@@ -1654,10 +1666,6 @@ export function DomainsPage() {
 export function AgentsPage() {
   useLocale();
   const r = useResource<{ tokens: Token[] }>("/api/tokens");
-  const [name, setName] = useState("");
-  const [expires, setExpires] = useState("");
-  const [scopes, setScopes] = useState(["read", "publish"]);
-  const [secret, setSecret] = useState("");
   const a = useAction();
   return (
     <div className="admin-surface admin-agents">
@@ -1668,104 +1676,10 @@ export function AgentsPage() {
         )}
       />
       <ErrorBox error={r.error || a.error} />
-      <p className="agent-context">
-        <Terminal size={17} />
-        {translate(
-          "API 토큰으로 허용할 작업을 정한 뒤 MCP 또는 CLI를 연결하세요.",
-        )}
-      </p>
-      <div className="agent-setup">
-        <section className="panel">
-          <div className="section-title">
-            <h2>{translate("1. API 토큰 발급")}</h2>
-            <KeyRound size={19} />
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void a.run(async () => {
-                const result = await api<{ token: string }>(
-                  "/api/tokens",
-                  json("POST", {
-                    name,
-                    scopes,
-                    expiresAt: expires ? new Date(expires).toISOString() : null,
-                  }),
-                );
-                setSecret(result.token);
-                setName("");
-                r.reload();
-              });
-            }}
-          >
-            <Field label={translate("토큰 이름")}>
-              <input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={translate("예: 내 개발 에이전트")}
-              />
-            </Field>
-            <fieldset className="scope-checks">
-              <legend>{translate("허용할 작업")}</legend>
-              {[
-                { id: "read", label: translate("목록·미리보기") },
-                { id: "publish", label: translate("게시·버전 갱신·보관") },
-                { id: "share", label: translate("공유 설정 변경") },
-                { id: "review", label: translate("검토·댓글 작성") },
-              ].map((x) => (
-                <label key={x.id}>
-                  <input
-                    type="checkbox"
-                    checked={scopes.includes(x.id)}
-                    onChange={(e) =>
-                      setScopes(
-                        e.target.checked
-                          ? [...scopes, x.id]
-                          : scopes.filter((s) => s !== x.id),
-                      )
-                    }
-                  />
-                  {x.label}
-                </label>
-              ))}
-            </fieldset>
-            <Field label={translate("만료일 (선택)")}>
-              <input
-                type="datetime-local"
-                value={expires}
-                onChange={(e) => setExpires(e.target.value)}
-              />
-            </Field>
-            <button
-              className="button primary"
-              disabled={a.busy || !scopes.length}
-            >
-              {a.busy ? <Spinner /> : translate("토큰 발급")}
-            </button>
-          </form>
-          {secret && (
-            <div className="secret-box vertical">
-              <b>{translate("한 번만 표시하는 API 토큰")}</b>
-              <code>{secret}</code>
-              <CopyButton text={secret} />
-              <small>
-                {translate("안전하게 보관한 후 이 표시를 닫아주세요.")}
-              </small>
-              <button
-                className="button secondary compact"
-                onClick={() => setSecret("")}
-              >
-                {translate("토큰 표시 닫기")}
-              </button>
-            </div>
-          )}
-        </section>
-        <AgentClientGuides />
-      </div>
+      <AgentClientGuides onConnected={r.reload} />
       <section className="panel">
         <div className="section-title">
-          <h2>{translate("내 API 토큰")}</h2>
+          <h2>{translate("연결 관리")}</h2>
           <span className="subtle">
             {translate("폐기하면 연결된 에이전트의 접근도 해제됩니다.")}
           </span>
@@ -1781,8 +1695,18 @@ export function AgentsPage() {
               <div className="connection-name">
                 <b>{t.name}</b>
                 <small>
-                  {t.scopes.join(" · ")} ·{" "}
-                  {translate("{p0} 발급", { p0: date(t.createdAt) })}
+                  {t.scopes
+                    .map(
+                      (scope) =>
+                        ({
+                          read: translate("목록·미리보기"),
+                          publish: translate("게시·버전 갱신·보관"),
+                          share: translate("공유 설정 변경"),
+                          review: translate("검토·댓글 작성"),
+                        })[scope] || scope,
+                    )
+                    .join(" · ")}{" "}
+                  · {translate("{p0} 발급", { p0: date(t.createdAt) })}
                   {t.expiresAt
                     ? translate(" · {p0} 만료", { p0: date(t.expiresAt) })
                     : ""}
@@ -1816,62 +1740,15 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
     appUrl: string;
     contentUrl: string;
   }>("/api/admin/settings");
-  const [name, setName] = useState("");
-  const [saved, setSaved] = useState(false);
-  const a = useAction();
-  useEffect(() => {
-    if (r.data) setName(r.data.organization.name);
-  }, [r.data]);
   return (
     <div className="admin-surface admin-settings">
       <PageHeading
         title={translate("조직 설정")}
         description={translate("조직 이름과 설치 정보를 확인합니다.")}
       />
-      <ErrorBox error={r.error || a.error} />
-      <section className="panel admin-section">
-        <div className="admin-section-heading">
-          <h2>{translate("조직 정보")}</h2>
-          <p>{translate("작업 공간에서 사용할 이름입니다.")}</p>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void a.run(async () => {
-              await api(
-                "/api/admin/settings",
-                json("PATCH", { organizationName: name }),
-              );
-              setSaved(true);
-              r.reload();
-              onChanged();
-            });
-          }}
-        >
-          <Field label={translate("조직 이름")}>
-            <input
-              required
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setSaved(false);
-              }}
-              maxLength={100}
-            />
-          </Field>
-          <button className="button primary" disabled={a.busy}>
-            {a.busy ? <Spinner /> : translate("변경 사항 저장")}
-          </button>
-          {saved && (
-            <span className="saved-inline">
-              <CheckCircle2 size={15} />
-              {translate("저장했습니다.")}
-            </span>
-          )}
-        </form>
-      </section>
+      <ErrorBox error={r.error} />
       {r.data && (
-        <OrganizationPhotoSettings
+        <OrganizationIdentitySettings
           organization={r.data.organization}
           onSaved={() => {
             r.reload();
@@ -1919,56 +1796,7 @@ export function SettingsPage({ onChanged }: { onChanged: () => void }) {
   );
 }
 export function AuditPage() {
-  useLocale();
-  const r = useResource<{ events: Audit[] }>("/api/admin/audit?limit=100");
-  return (
-    <div className="admin-surface admin-audit">
-      <PageHeading
-        title={translate("변경 기록")}
-        description={translate(
-          "계정, 공유, 게시와 보관 정책의 변경을 확인합니다.",
-        )}
-        action={
-          <button className="button secondary" onClick={r.reload}>
-            <RefreshCw size={16} />
-            {translate("새로고침")}
-          </button>
-        }
-      />
-      <ErrorBox error={r.error} />
-      <section className="panel">
-        {r.loading ? (
-          <div className="loading-row">
-            <Spinner />
-          </div>
-        ) : !r.data?.events.length ? (
-          <Empty
-            icon={<ShieldCheck size={30} />}
-            heading={translate("아직 기록이 없습니다")}
-            description={translate(
-              "작업 공간에서 일어난 변경 사항이 여기에 남습니다.",
-            )}
-          />
-        ) : (
-          <div className="audit-list">
-            {r.data.events.map((e) => (
-              <div className="audit-row" key={e.id}>
-                <span className="audit-dot" />
-                <div>
-                  <b>{e.action}</b>
-                  <p>
-                    {e.actorName || translate("시스템")}
-                    {e.detail ? ` · ${e.detail}` : ""}
-                  </p>
-                </div>
-                <time>{date(e.createdAt)}</time>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
-  );
+  return <AuditActivity />;
 }
 
 export function AccountPage({
@@ -1994,29 +1822,6 @@ export function AccountPage({
             : translate("계정 정보를 확인하고 비밀번호를 변경합니다.")
         }
       />
-      <section className="panel admin-section">
-        <div className="admin-section-heading">
-          <h2>{translate("계정 정보")}</h2>
-        </div>
-        <dl className="detail-list">
-          <div>
-            <dt>{translate("이름")}</dt>
-            <dd>{session.user.name}</dd>
-          </div>
-          <div>
-            <dt>{translate("이메일")}</dt>
-            <dd>{session.user.email}</dd>
-          </div>
-          <div>
-            <dt>{translate("역할")}</dt>
-            <dd>
-              {session.user.role === "admin"
-                ? translate("관리자")
-                : translate("구성원")}
-            </dd>
-          </div>
-        </dl>
-      </section>
       <UserProfileSettings
         user={session.user}
         onSaved={(user) => onSession({ ...session, user })}
@@ -2024,10 +1829,7 @@ export function AccountPage({
       {session.user.loginMethod === "google" ? (
         <section className="panel admin-section">
           <div className="admin-section-heading">
-            <h2 className="service-heading">
-              <ServiceIcon service="google" />
-              {translate("Google 로그인")}
-            </h2>
+            <h2>{translate("로그인 및 보안")}</h2>
           </div>
           <div>
             <p className="subtle">

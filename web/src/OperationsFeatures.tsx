@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { AppearanceControls } from "./AppearanceControls";
 import { Brand } from "./Auth";
 import { api, APIError, bytes, date, json } from "./api";
 import { CopyButton, ErrorBox, Field, Spinner } from "./ui";
@@ -582,7 +581,6 @@ export function GuestViewer({ id }: { id: string }) {
           <Brand />
         </a>
         <span>{t("읽기 전용 게스트 링크")}</span>
-        <AppearanceControls />
       </header>
       <ErrorBox error={error} />
       {url ? (

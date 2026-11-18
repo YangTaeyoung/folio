@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: folio
+data:
+  FOLIO_APP_URL: https://folio.example.internal
+  FOLIO_CONTENT_URL: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: folio
+spec:
+  template:
+    spec:
+      containers:
+        - name: folio
+          startupProbe:
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: folio.example.internal
+          readinessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: folio.example.internal
+          livenessProbe:
+            httpGet:
+              httpHeaders:
+                - name: Host
+                  value: folio.example.internal

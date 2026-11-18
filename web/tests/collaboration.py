@@ -33,13 +33,18 @@ def main():
     app_port, content_port = free_port(), free_port()
     app = f'http://folio.localhost:{app_port}'
     errors, checks = [], []
+    fixture_names = {}
     phase = "setup"
     def console_failure(message):
         if message.type != "error":
             return
         location = dict(message.location)
         location["url"] = re.sub(r"/grant/[^/?#]+", "/grant/[redacted]", location.get("url", ""))
-        errors.append({"message": message.text, "location": location, "phase": phase})
+        error = {"message": message.text, "location": location, "phase": phase}
+        for identity, title in fixture_names.items():
+            if identity in location.get("url", ""):
+                error["artifact"] = title
+        errors.append(error)
     with tempfile.TemporaryDirectory(prefix='folio-collaboration-') as data:
         with open(Path(data) / 'server.log', 'w+') as log:
             proc = subprocess.Popen([binary, 'serve', '--data-dir', data,
@@ -92,6 +97,9 @@ def main():
                     v3 = third['version']['id']
                     other = upload('Reference notes', 1)
                     other_id = other['artifact']['id']
+                    for item in [first['artifact'], other['artifact']]:
+                        fixture_names[item['id']] = item['title']
+                        fixture_names[item['slug']] = item['title']
                     # A public read response must retain the approved publication snapshot.
                     request('PATCH', f'/api/artifacts/{aid}/sharing', {'visibility': 'organization'})
                     member = request('POST', '/api/admin/members', {'name': 'Fixture reader', 'email': 'reader@folio.test', 'role': 'member', 'password': 'Reader-temporary-only-123!'}, want=201)
@@ -121,17 +129,35 @@ def main():
 
                     def nav(name):
                         close_detail()
-                        if page.viewport_size['width'] < 900:
-                            # Native mobile navigation keeps the same named destinations.
-                            toggler = page.get_by_role('button', name='메뉴 열기', exact=True)
-                            if not toggler.count():
-                                toggler = page.get_by_role('button', name='메뉴', exact=True)
-                            toggler.click()
-                        page.get_by_role('button', name=name, exact=True).first.click()
+                        if '/s/' in page.url:
+                            page.goto(app + '/#library')
+
+                        def primary(destination):
+                            if page.viewport_size['width'] <= 900:
+                                page.get_by_role('button', name='메뉴 열기', exact=True).click()
+                            page.locator('.primary-navigation').get_by_role('button', name=destination, exact=True).click()
+
+                        if name in ['전체 아티팩트', '내 아티팩트', '조직 공유함', '즐겨찾기', '아카이브', '휴지통']:
+                            if not page.locator('.library-filters').is_visible():
+                                primary('라이브러리')
+                            page.locator('.library-filters').get_by_role('button', name=name, exact=True).click()
+                        elif name in ['컬렉션', '에이전트']:
+                            primary(name)
+                        else:
+                            if not page.locator('.settings-navigation').is_visible():
+                                primary('설정')
+                            page.locator('.settings-navigation').get_by_role('button', name=name, exact=True).click()
 
                     def open_report(tab='검토 및 피드백'):
                         nav('전체 아티팩트')
-                        page.get_by_role('button', name='Collaboration report draft 열기', exact=True).click()
+                        card = page.get_by_role('link', name='Collaboration report draft 열기', exact=True)
+                        href = card.get_attribute('href')
+                        assert href and '/s/' in href
+                        card.click()
+                        expect(page).to_have_url(href)
+                        expect(page.locator('.viewer-frame')).to_be_visible()
+                        expect(page.locator('.sidebar')).to_have_count(0)
+                        page.get_by_role('button', name='아티팩트 상세', exact=True).click()
                         detail = page.get_by_role('dialog')
                         choose(detail.get_by_label('검토할 버전', exact=True), v3)
                         detail.get_by_role('button', name=tab, exact=True).click()
@@ -141,6 +167,7 @@ def main():
                     detail = open_report()
                     panel = detail.locator('.review-panel')
                     expect(panel.locator('.review-state')).to_be_visible()
+                    phase = 'review-comment'
                     panel.get_by_label('새 댓글', exact=True).fill('Check the heading before publication.')
                     panel.get_by_text('파일 위치 지정 (선택)', exact=True).click()
                     choose(panel.get_by_label('파일', exact=True), 'index.html')
@@ -148,16 +175,20 @@ def main():
                     panel.get_by_role('button', name='댓글 남기기', exact=True).click()
                     expect(panel.get_by_text('댓글을 남겼습니다.', exact=True)).to_be_visible()
                     thread = panel.locator('.review-thread').first
+                    phase = 'review-reply'
                     thread.get_by_role('button', name='답글', exact=True).click()
                     thread.get_by_label('답글', exact=True).fill('Verified against the source.')
                     thread.get_by_role('button', name='답글 남기기', exact=True).click()
                     expect(thread.get_by_text('Verified against the source.', exact=True)).to_be_visible()
+                    phase = 'review-resolve-reopen'
                     thread.get_by_role('button', name='해결', exact=True).click()
                     expect(thread.get_by_text('해결됨', exact=True)).to_be_visible()
                     thread.get_by_role('button', name='다시 열기', exact=True).click()
                     choose(panel.get_by_label('검토 상태', exact=True), 'approved')
+                    phase = 'review-approval'
                     panel.get_by_role('button', name='상태 저장', exact=True).click()
                     expect(panel.locator('.review-state-approved')).to_be_visible()
+                    phase = 'review-promotion'
                     panel.get_by_role('button', name='이 버전 게시', exact=True).click()
                     expect(panel.get_by_text('현재 게시된 버전입니다.', exact=True)).to_be_visible()
                     state = request('GET', f'/api/artifacts/{aid}')
@@ -170,7 +201,9 @@ def main():
                     page.get_by_role('button', name='새 컬렉션', exact=True).first.click()
                     editor = page.locator('.collection-editor')
                     editor.get_by_label('이름', exact=True).fill('Launch review')
+                    editor.locator('.collection-description summary').click()
                     editor.get_by_label('설명', exact=True).fill('Authored collaboration acceptance fixture.')
+                    editor.locator('.collection-sharing summary').click()
                     choose(editor.get_by_label('공유 범위', exact=True), 'organization')
                     editor.locator('.collection-choices').get_by_role('button').filter(has_text='Collaboration report').click()
                     editor.locator('.collection-choices').get_by_role('button').filter(has_text='Reference notes').click()
@@ -178,9 +211,14 @@ def main():
                     editor.get_by_role('button', name='컬렉션 저장', exact=True).click()
                     expect(page.get_by_role('heading', name='Launch review', exact=True)).to_be_visible()
                     expect(page.locator('.collection-artifact-open').first).to_contain_text('Reference notes')
-                    page.locator('.collection-artifact-open').filter(has_text='Collaboration report').click()
-                    expect(page.get_by_role('dialog')).to_be_visible()
-                    checks += ['collection-create-team-order-open', 'collection-permission-note']
+                    collection_link = page.locator('a.collection-artifact-open').filter(has_text='Collaboration report')
+                    collection_href = collection_link.get_attribute('href')
+                    assert collection_href and '/s/' in collection_href
+                    collection_link.click()
+                    expect(page).to_have_url(collection_href)
+                    expect(page.locator('.viewer-frame')).to_be_visible()
+                    expect(page.get_by_role('dialog')).to_have_count(0)
+                    checks += ['collection-create-team-order-open', 'collection-reader-link-direct-url', 'collection-permission-note']
 
                     phase = 'context'
                     detail = open_report('출처')
@@ -230,7 +268,7 @@ def main():
                     checks += ['real-text-diff-sha-comparison', 'private-side-by-side-version-assets', 'isolated-version-root-absolute-modules-delayed-fetch']
 
                     close_detail()
-                    page.get_by_role('button', name='Collaboration report draft 공유', exact=True).click()
+                    page.locator('.viewer-header').get_by_role('button', name='공유', exact=True).click()
                     share = page.get_by_role('dialog')
                     guest_section = share.locator('.ops-section')
                     choose(guest_section.get_by_label('공유할 버전', exact=True), v2)
@@ -276,12 +314,14 @@ def main():
                     assert backup_file.stat().st_size > 100
                     phase = 'trash-restore'
                     request('DELETE', f'/api/artifacts/{other_id}', want=204)
+                    phase = 'trash-open-after-delete'
                     nav('휴지통')
                     row = page.locator('.ops-list li').filter(has_text='Reference notes')
                     expect(row).to_be_visible()
                     row.get_by_role('button', name='복원', exact=True).click()
                     expect(page.get_by_text('휴지통이 비어 있습니다', exact=True)).to_be_visible()
                     request('DELETE', f'/api/artifacts/{other_id}', want=204)
+                    phase = 'backup-open-after-delete'
                     nav('백업 및 복원')
                     phase = 'backup-restore'
                     restore = page.locator('.ops-restore')

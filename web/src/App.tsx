@@ -13,12 +13,14 @@ import {
   Grid2X2,
   HardDrive,
   History,
+  Info,
   Layers,
   List,
   LogOut,
   Menu,
   Plus,
   Search,
+  Share2,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -197,12 +199,43 @@ function Viewer({
   );
   const [url, setURL] = useState("");
   const [launchError, setLaunchError] = useState<unknown>(null);
+  const [dialog, setDialog] = useState<"detail" | "share" | "upload" | null>(
+    null,
+  );
+  const [managedArtifact, setManagedArtifact] = useState<Artifact | null>(null);
+  const [managementError, setManagementError] = useState<unknown>(null);
+  const artifact = r.data?.artifact;
+  const canManage =
+    !!session &&
+    !!artifact &&
+    (session.user.role === "admin" || session.user.id === artifact.ownerId);
+  const closeDialog = useCallback(() => setDialog(null), []);
+  async function refreshManagement() {
+    if (!session || !artifact) return;
+    const result = await api<{ artifact: Artifact }>(
+      `/api/artifacts/${artifact.id}`,
+    );
+    setManagedArtifact(result.artifact);
+  }
+  async function openManagement(next: "detail" | "share" | "upload") {
+    setManagementError(null);
+    try {
+      await refreshManagement();
+      setDialog(next);
+    } catch (error) {
+      setManagementError(error);
+    }
+  }
+  function managementChanged() {
+    void refreshManagement().catch(setManagementError);
+    r.reload();
+  }
   useEffect(() => {
     if (!r.data) return;
     let active = true;
     const query = new URLSearchParams(location.search);
     const hostname = query.get("domain");
-    const versionId = query.get("version") || undefined;
+    const versionId = query.get("version") || r.data.artifact.currentVersionId;
     api<{ url: string }>(
       `/api/artifacts/${r.data.artifact.id}/launch`,
       json("POST", {
@@ -228,7 +261,25 @@ function Viewer({
         </a>
         <span>{r.data?.artifact.title || translate("공유된 아티팩트")}</span>
         <div>
-          <AppearanceControls />
+          {session && artifact && (
+            <>
+              <button
+                className="icon-button"
+                aria-label={translate("아티팩트 상세")}
+                title={translate("아티팩트 상세")}
+                onClick={() => void openManagement("detail")}
+              >
+                <Info size={18} />
+              </button>
+              <button
+                className="button primary compact"
+                onClick={() => void openManagement("share")}
+              >
+                <Share2 size={15} />
+                {translate("공유")}
+              </button>
+            </>
+          )}
           {r.data && (
             <small className="scope-label">
               {visibilityLabels[r.data.artifact.visibility]}
@@ -246,7 +297,8 @@ function Viewer({
           )}
         </div>
       </header>
-      {r.loading ? (
+      <ErrorBox error={managementError} />
+      {r.loading && !r.data ? (
         <div className="boot-screen">
           <Spinner />
         </div>
@@ -282,6 +334,32 @@ function Viewer({
         <div className="boot-screen">
           <Spinner />
         </div>
+      )}
+      {session && managedArtifact && dialog === "detail" && (
+        <DetailPanel
+          artifact={managedArtifact}
+          user={session.user}
+          canManage={canManage}
+          onClose={closeDialog}
+          onShare={() => setDialog("share")}
+          onUpload={() => setDialog("upload")}
+          onChanged={managementChanged}
+        />
+      )}
+      {session && managedArtifact && dialog === "share" && (
+        <SharePanel
+          artifact={managedArtifact}
+          canManage={canManage}
+          onClose={closeDialog}
+          onSaved={managementChanged}
+        />
+      )}
+      {canManage && managedArtifact && dialog === "upload" && (
+        <UploadDialog
+          existing={managedArtifact}
+          onClose={closeDialog}
+          onSaved={managementChanged}
+        />
       )}
     </main>
   );
@@ -357,7 +435,6 @@ function Workspace({
   const [sort, setSort] = useState("updated");
   const [layout, setLayout] = useState("grid");
   const [revision, setRevision] = useState(0);
-  const [selected, setSelected] = useState<Artifact | null>(null);
   const [share, setShare] = useState<Artifact | null>(null);
   const [upload, setUpload] = useState<Artifact | true | null>(null);
   const [toast, setToast] = useState("");
@@ -379,32 +456,22 @@ function Workspace({
   const isAdmin = session.user.role === "admin";
   const canManage = (a: Artifact) => isAdmin || a.ownerId === session.user.id;
   const closeShare = useCallback(() => setShare(null), []);
-  const closeSelected = useCallback(() => setSelected(null), []);
   const closeUpload = useCallback(() => setUpload(null), []);
   function go(v: View) {
+    if (
+      ["library", "mine", "shared", "favorites", "archive", "trash"].includes(v)
+    )
+      setRevision((n) => n + 1);
     setView(v);
     location.hash = v;
     setMobile(false);
     setQuery("");
-    setSelected(null);
     setShare(null);
   }
   function changed(message = translate("변경 사항을 저장했습니다.")) {
     setRevision((n) => n + 1);
     setToast(message);
     setTimeout(() => setToast(""), 3500);
-    if (selected)
-      api<{ artifact: Artifact }>(`/api/artifacts/${selected.id}`)
-        .then((x) =>
-          setSelected((current) =>
-            current?.id === selected.id ? x.artifact : current,
-          ),
-        )
-        .catch(() =>
-          setSelected((current) =>
-            current?.id === selected.id ? null : current,
-          ),
-        );
   }
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -424,8 +491,20 @@ function Workspace({
   useEffect(() => {
     function back() {
       const next = location.hash.slice(1);
-      if ([...getNav(), ...getManagement()].some((n) => n.id === next))
+      if ([...getNav(), ...getManagement()].some((n) => n.id === next)) {
         setView(next as View);
+        if (
+          [
+            "library",
+            "mine",
+            "shared",
+            "favorites",
+            "archive",
+            "trash",
+          ].includes(next)
+        )
+          setRevision((n) => n + 1);
+      }
     }
     window.addEventListener("hashchange", back);
     return () => window.removeEventListener("hashchange", back);
@@ -501,122 +580,204 @@ function Workspace({
           <b>{session.organization.name}</b>
           <Settings size={15} />
         </button>
-        <div className="nav-label">{translate("라이브러리")}</div>
-        <nav aria-label={translate("아티팩트 탐색")}>
-          {getNav().map((item) => (
-            <button
-              key={item.id}
-              className={view === item.id ? "active" : ""}
-              aria-current={view === item.id ? "page" : undefined}
-              onClick={() => go(item.id as View)}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="nav-separator" />
-        <div className="nav-label">{translate("작업 공간")}</div>
-        <nav aria-label={translate("작업 공간 관리")}>
-          {getManagement()
-            .filter((n) => isAdmin || ["agents", "account"].includes(n.id))
-            .map((item) => (
+        <nav
+          aria-label={translate("작업 공간 탐색")}
+          className="primary-navigation"
+        >
+          {[
+            { id: "library", label: translate("라이브러리"), icon: Layers },
+            { id: "collections", label: translate("컬렉션"), icon: FolderOpen },
+            { id: "agents", label: translate("에이전트"), icon: Sparkles },
+            ...(isAdmin
+              ? [{ id: "settings", label: translate("설정"), icon: Settings }]
+              : []),
+          ].map((item) => {
+            const active =
+              item.id === "library"
+                ? library || view === "trash"
+                : item.id === "settings"
+                  ? isAdmin &&
+                    !["agents", "account", "collections"].includes(view) &&
+                    !library &&
+                    view !== "trash"
+                  : item.id === view;
+            return (
               <button
                 key={item.id}
-                className={view === item.id ? "active" : ""}
-                aria-current={view === item.id ? "page" : undefined}
+                className={active ? "active" : ""}
+                aria-current={active ? "page" : undefined}
                 onClick={() => go(item.id as View)}
               >
-                <item.icon size={18} />
+                <item.icon size={17} />
                 {item.label}
               </button>
-            ))}
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
-          <AppearanceControls />
-          <div className="capacity">
-            <div>
-              <span>{translate("보관 용량")}</span>
-              <span>{bytes(r.data?.usage.usedBytes || 0)}</span>
-            </div>
-            <div className="meter">
+          <button
+            className="capacity-inline"
+            onClick={() => go(isAdmin ? "storage" : "account")}
+            title={translate("보관 용량")}
+            aria-label={translate("보관 용량")}
+          >
+            <span>
+              <HardDrive size={15} />
+              {translate("보관 용량")}
+            </span>
+            <small>
+              {r.data
+                ? `${bytes(r.data.usage.usedBytes)} / ${bytes(r.data.usage.quotaBytes)}`
+                : "—"}
+            </small>
+            <span
+              className="capacity-track"
+              role="meter"
+              aria-label={translate("보관 용량")}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.min(
+                100,
+                Math.round(
+                  ((r.data?.usage.usedBytes || 0) /
+                    (r.data?.usage.quotaBytes || 1)) *
+                    100,
+                ),
+              )}
+              aria-valuetext={
+                r.data
+                  ? `${bytes(r.data.usage.usedBytes)} / ${bytes(r.data.usage.quotaBytes)}`
+                  : undefined
+              }
+            >
               <i
                 style={{
                   width: `${Math.min(100, ((r.data?.usage.usedBytes || 0) / (r.data?.usage.quotaBytes || 1)) * 100)}%`,
                 }}
               />
-            </div>
-            <small>
-              {translate("한도: {p0}", {
-                p0: bytes(r.data?.usage.quotaBytes || 0),
-              })}
-            </small>
-          </div>
-          <div className="sidebar-user">
-            <Avatar
-              className="user-monogram"
-              name={session.user.name}
-              src={session.user.avatarUrl}
-            />
-            <span>
-              <b>{session.user.name}</b>
-              <small>
-                {isAdmin ? translate("관리자") : translate("구성원")}
-              </small>
             </span>
+          </button>
+          <div className="sidebar-user">
+            <button className="sidebar-profile" onClick={() => go("account")}>
+              <Avatar name={session.user.name} src={session.user.avatarUrl} />
+              <span>
+                <b>{session.user.name}</b>
+                <small>
+                  {isAdmin ? translate("관리자") : translate("구성원")}
+                </small>
+              </span>
+            </button>
             <button
               className="icon-button"
               title={translate("로그아웃")}
               aria-label={translate("로그아웃")}
               onClick={() => void onLogout().catch(setError)}
             >
-              <LogOut size={17} />
+              <LogOut size={16} />
             </button>
           </div>
-          <span className="local-status">
-            {translate("Folio · 자체 호스팅")}
-          </span>
         </div>
       </aside>
       <div className="main-shell" inert={compactNav && mobile}>
-        <header className="mobile-header">
+        <header className="workspace-topbar">
           <button
-            className="icon-button"
+            className="icon-button workspace-menu"
             aria-label={translate("메뉴 열기")}
             aria-expanded={mobile}
             aria-controls="workspace-navigation"
             onClick={() => setMobile(true)}
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </button>
-          <Brand />
-          <button
-            className="icon-button"
-            aria-label={translate("새 아티팩트")}
-            onClick={() => setUpload(true)}
-          >
-            <Plus size={21} />
-          </button>
+          <span className="workspace-breadcrumb">
+            <span>{session.organization.name}</span>
+            <span className="breadcrumb-divider">/</span>
+            <b>
+              {
+                [...getNav(), ...getManagement()].find((n) => n.id === view)
+                  ?.label
+              }
+            </b>
+          </span>
+          <div className="workspace-header-actions">
+            <AppearanceControls />
+            <button
+              className="topbar-account"
+              onClick={() => go("account")}
+              aria-label={translate("내 계정 열기")}
+              title={translate("내 계정")}
+            >
+              <Avatar name={session.user.name} src={session.user.avatarUrl} />
+            </button>
+          </div>
         </header>
-        <div className="workspace-topbar">
-          <span>{session.organization.name}</span>
-          <span className="breadcrumb-divider">/</span>
-          <b>
-            {
-              [...getNav(), ...getManagement()].find((n) => n.id === view)
-                ?.label
-            }
-          </b>
-          <button
-            className="topbar-account"
-            onClick={() => go("account")}
-            aria-label={translate("내 계정 열기")}
-          >
-            <Avatar name={session.user.name} src={session.user.avatarUrl} />
-          </button>
-        </div>
         <main className={`workspace-main ${library ? "library-main" : ""}`}>
           <ErrorBox error={error} />
+          {isAdmin &&
+            [
+              "settings",
+              "members",
+              "storage",
+              "domains",
+              "backups",
+              "audit",
+            ].includes(view) && (
+              <nav
+                className="settings-navigation"
+                aria-label={translate("설정 탐색")}
+              >
+                {getManagement()
+                  .filter((n) => !["agents", "account"].includes(n.id))
+                  .sort(
+                    (a, b) =>
+                      [
+                        "settings",
+                        "members",
+                        "storage",
+                        "domains",
+                        "backups",
+                        "audit",
+                      ].indexOf(a.id) -
+                      [
+                        "settings",
+                        "members",
+                        "storage",
+                        "domains",
+                        "backups",
+                        "audit",
+                      ].indexOf(b.id),
+                  )
+                  .map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => go(n.id as View)}
+                      aria-current={view === n.id ? "page" : undefined}
+                      className={view === n.id ? "active" : ""}
+                    >
+                      {n.label}
+                    </button>
+                  ))}
+              </nav>
+            )}
+          {view === "trash" && (
+            <nav
+              className="library-filters"
+              aria-label={translate("라이브러리 필터")}
+            >
+              {getNav()
+                .filter((n) => n.id !== "collections")
+                .map((n) => (
+                  <button
+                    key={n.id}
+                    className={view === n.id ? "active" : ""}
+                    aria-current={view === n.id ? "page" : undefined}
+                    onClick={() => go(n.id as View)}
+                  >
+                    {n.label}
+                  </button>
+                ))}
+            </nav>
+          )}
           {library ? (
             <>
               <div className="library-overview">
@@ -664,6 +825,23 @@ function Workspace({
                   </button>
                 </header>
                 <div className="library-toolbar">
+                  <nav
+                    className="library-filters"
+                    aria-label={translate("라이브러리 필터")}
+                  >
+                    {getNav()
+                      .filter((n) => n.id !== "collections")
+                      .map((n) => (
+                        <button
+                          key={n.id}
+                          className={view === n.id ? "active" : ""}
+                          aria-current={view === n.id ? "page" : undefined}
+                          onClick={() => go(n.id as View)}
+                        >
+                          {n.label}
+                        </button>
+                      ))}
+                  </nav>
                   <div className="toolbar-controls">
                     <div className="input-icon search-field">
                       <Search size={16} />
@@ -712,7 +890,7 @@ function Workspace({
                 </div>
               </div>
               <ErrorBox error={r.error} />
-              {r.loading && !r.data ? (
+              {r.loading || r.stale ? (
                 <div
                   className="artifact-grid"
                   aria-label={translate("불러오는 중")}
@@ -750,7 +928,7 @@ function Workspace({
                       <ArtifactCard
                         key={artifact.id}
                         artifact={artifact}
-                        onOpen={() => setSelected(artifact)}
+
                         onShare={() => setShare(artifact)}
                       />
                     ))}
@@ -761,7 +939,7 @@ function Workspace({
           ) : view === "collections" ? (
             <CollectionsView
               user={session.user}
-              onOpen={setSelected}
+              onOpen={(artifact) => location.assign(artifact.shareUrl)}
               onShare={setShare}
             />
           ) : view === "trash" ? (
@@ -818,23 +996,6 @@ function Workspace({
             <X size={15} />
           </button>
         </div>
-      )}
-      {selected && !share && (
-        <DetailPanel
-          artifact={selected}
-          user={session.user}
-          canManage={canManage(selected)}
-          onClose={closeSelected}
-          onShare={() => {
-            setShare(selected);
-            setSelected(null);
-          }}
-          onChanged={() => changed()}
-          onUpload={() => {
-            setUpload(selected);
-            setSelected(null);
-          }}
-        />
       )}
       {share && (
         <SharePanel

@@ -144,6 +144,14 @@
       "license": "Google identity asset; existing file retained unchanged",
       "modified": false,
       "sha256": "2bc2ae8e4c67de66d74bf1deed12cd8f22981270266a487576b671b0b4df361c"
+    },
+    {
+      "file": "antigravity.svg",
+      "source": "https://antigravity.google/favicon.svg",
+      "retrieved": "2026-11-19",
+      "license_notice": "Official Google product mark; Google trademarks retained. Used for product identification.",
+      "modified": false,
+      "sha256": "de7911c3d206a3d2fe3d5b4e76e84b185c581d7a259406f64db247b5b824f02e"
     }
   ]
 }
