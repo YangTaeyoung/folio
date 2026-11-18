@@ -235,3 +235,15 @@ func TestPathModeManagementRoutesUnaffected(t *testing.T) {
 		t.Fatal(w.Code, w.Header())
 	}
 }
+
+func TestPathModeDiffHasNoPreviewHosts(t *testing.T) {
+	c := freshPath(t)
+	c.setup()
+	a, v1 := workspaceUpload(t, c, "", map[string]any{"title": "Diff"}, map[string]string{"index.html": "ONE"})
+	_, v2 := workspaceUpload(t, c, a.ID, map[string]any{"baseVersionId": v1.ID}, map[string]string{"index.html": "TWO"})
+	out := reviewHTTP(t, c, "GET", "/api/artifacts/"+a.ID+"/diff?from="+v1.ID+"&to="+v2.ID, nil, 200)
+	hosts, ok := out["previewHosts"].([]any)
+	if !ok || len(hosts) != 0 {
+		t.Fatal(out["previewHosts"])
+	}
+}

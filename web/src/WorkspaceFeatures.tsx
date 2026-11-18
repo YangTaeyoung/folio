@@ -1072,7 +1072,7 @@ export function VersionCompare({
         </Field>
       </div>
       <ErrorBox error={error} />
-      {data?.previewHosts && (
+      {data?.previewHosts && data.previewHosts.length > 0 && (
         <details className="compare-domain-help">
           <summary>{t("미리보기 도메인")}</summary>
           <p>

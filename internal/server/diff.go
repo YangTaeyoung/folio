@@ -184,6 +184,19 @@ func (s *Server) diff(w http.ResponseWriter, r *http.Request, p principal, a Art
 			}
 		}
 	}
-	writeJSON(w, 200, map[string]any{"from": s.publicVersion(from), "to": s.publicVersion(to), "files": files, "summary": summary, "textLimitBytes": 256 << 10, "textLimitLines": 1000, "previewHosts": []string{s.canonicalVersion(a, from.ID).Host, s.canonicalVersion(a, to.ID).Host}})
+	writeJSON(w, 200, map[string]any{"from": s.publicVersion(from), "to": s.publicVersion(to), "files": files, "summary": summary, "textLimitBytes": 256 << 10, "textLimitLines": 1000, "previewHosts": s.previewHosts(a, from.ID, to.ID)})
 	return nil
+}
+
+// previewHosts lists the content hostnames that version previews need routed; path mode serves
+// previews on the management host and needs none.
+func (s *Server) previewHosts(a Artifact, versionIDs ...string) []string {
+	hosts := []string{}
+	if s.pathMode {
+		return hosts
+	}
+	for _, id := range versionIDs {
+		hosts = append(hosts, s.canonicalVersion(a, id).Host)
+	}
+	return hosts
 }
