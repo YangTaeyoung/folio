@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:4310:4310"
+      - "127.0.0.1:4311:4311"
     environment:
       FOLIO_APP_URL: ${FOLIO_APP_URL:-http://folio.localhost:4310}
       FOLIO_CONTENT_URL: ${FOLIO_CONTENT_URL:-}

@@ -86,6 +86,9 @@ func ResolveContentURL(appURL, contentURL string) (ContentLayout, error) {
 		return ContentLayout{}, errors.New("ContentURL path mode must use the management origin")
 	}
 	prefix := strings.TrimSuffix(cu.Path, "/sample")
+	if prefix != strings.ToLower(prefix) {
+		return ContentLayout{}, errors.New("ContentURL path prefix must be lowercase")
+	}
 	if !strings.HasSuffix(contentURL, "/{artifact}") || prefix == "" || prefix == cu.Path || strings.Contains(prefix+"/", "//") {
 		return ContentLayout{}, errors.New("ContentURL path placeholder must be the last whole segment after a non-empty prefix")
 	}

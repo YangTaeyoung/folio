@@ -232,7 +232,7 @@ func serve(ctx context.Context, args []string) error {
 		return e
 	}
 	*content = layout.Template
-	contentListenSet := os.Getenv("FOLIO_CONTENT_LISTEN") != ""
+	contentListenSet := false
 	f.Visit(func(fl *flag.Flag) {
 		if fl.Name == "content-listen" {
 			contentListenSet = true

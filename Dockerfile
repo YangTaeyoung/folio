@@ -19,7 +19,8 @@ RUN apk add --no-cache ca-certificates tzdata && addgroup -g 10001 folio && addu
 COPY --from=build /folio /usr/local/bin/folio
 USER folio
 WORKDIR /data
-EXPOSE 4310
+ENV FOLIO_CONTENT_LISTEN=0.0.0.0:4311
+EXPOSE 4310 4311
 VOLUME ["/data"]
 ENTRYPOINT ["folio"]
 CMD ["serve", "--listen", "0.0.0.0:4310", "--data-dir", "/data"]

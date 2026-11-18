@@ -25,6 +25,7 @@ func TestResolveContentURLModes(t *testing.T) {
 		{"http://app.test/c/x{artifact}", true, false, "", ""},
 		{"http://app.test/c/{artifact}?q=1", true, false, "", ""},
 		{"http://app.test/c/{artifact}/{artifact}", true, false, "", ""},
+		{"http://app.test/View/{artifact}", true, false, "", ""},
 	}
 	for _, tc := range cases {
 		got, e := ResolveContentURL("http://app.test", tc.content)

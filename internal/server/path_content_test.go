@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -246,4 +248,78 @@ func TestPathModeDiffHasNoPreviewHosts(t *testing.T) {
 	if !ok || len(hosts) != 0 {
 		t.Fatal(out["previewHosts"])
 	}
+}
+
+func TestPathModeHTTPSViewerCookies(t *testing.T) {
+	s, e := New(Config{DataDir: t.TempDir(), AppURL: "https://app.test", BootstrapToken: "test-setup"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(func() { s.Close() })
+	c := &client{t: t, s: s}
+	req := httptest.NewRequest("POST", "https://app.test/api/setup", strings.NewReader(`{"token":"test-setup","organizationName":"Team","name":"Admin","email":"admin@test.invalid","password":"strong-password-123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, req)
+	if w.Code != 200 {
+		t.Fatal(w.Code, w.Body)
+	}
+	var out map[string]any
+	json.Unmarshal(w.Body.Bytes(), &out)
+	c.cookie, c.csrf = w.Result().Cookies()[0], out["csrfToken"].(string)
+	callHTTPS := func(method, path string, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, "https://app.test"+path, strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("Origin", "https://app.test")
+		r.Header.Set("X-CSRF-Token", c.csrf)
+		r.AddCookie(c.cookie)
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		return w
+	}
+	a, v := workspaceUploadHTTPS(t, c)
+	w = callHTTPS("POST", "/api/artifacts/"+a+"/launch", "{}")
+	json.Unmarshal(w.Body.Bytes(), &out)
+	grant := out["url"].(string)
+	slug := strings.Split(strings.TrimPrefix(grant, "https://app.test/c/"), "/")[0]
+	w = c.get(grant)
+	if w.Code != 303 {
+		t.Fatal(w.Code, w.Body)
+	}
+	cookies := w.Result().Cookies()
+	for _, co := range cookies {
+		if !strings.HasPrefix(co.Name, "__Secure-folio_viewer") || co.Path != "/c/"+slug+"/" || !co.Secure || !co.HttpOnly || co.SameSite != http.SameSiteNoneMode || !co.Partitioned {
+			t.Fatal(co)
+		}
+	}
+	if w := c.get("https://app.test/c/"+slug+"/render/"+a+"/"+v+"/index.html", cookies...); w.Code != 200 {
+		t.Fatal("asset", w.Code)
+	}
+	if w := c.get(grant, cookies...); w.Code != 303 || len(w.Result().Cookies()) != 0 {
+		t.Fatal("consumed grant receipt", w.Code, w.Result().Cookies())
+	}
+}
+
+func workspaceUploadHTTPS(t *testing.T, c *client) (artifactID, versionID string) {
+	t.Helper()
+	b := new(bytes.Buffer)
+	m := multipart.NewWriter(b)
+	m.WriteField("metadata", `{"title":"HTTPS","files":[{"path":"index.html"}]}`)
+	part, _ := m.CreateFormFile("file0", "index.html")
+	part.Write([]byte("secure"))
+	m.Close()
+	r := httptest.NewRequest("POST", "https://app.test/api/artifacts", b)
+	r.Header.Set("Content-Type", m.FormDataContentType())
+	r.Header.Set("Origin", "https://app.test")
+	r.Header.Set("X-CSRF-Token", c.csrf)
+	r.AddCookie(c.cookie)
+	w := httptest.NewRecorder()
+	c.s.Handler().ServeHTTP(w, r)
+	if w.Code != 201 {
+		t.Fatal(w.Code, w.Body)
+	}
+	var out map[string]any
+	json.Unmarshal(w.Body.Bytes(), &out)
+	a := out["artifact"].(map[string]any)
+	return a["id"].(string), a["currentVersionId"].(string)
 }
