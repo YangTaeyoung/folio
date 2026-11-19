@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -13,13 +14,75 @@ import (
 // Folio CLI config written by login, never in a third-party MCP configuration.
 func connect(args []string) error {
 	f := flags("connect")
-	client := f.String("client", "", "Client to configure: cursor")
-	directory := f.String("config-dir", os.Getenv("FOLIO_CONFIG_DIR"), "Client config directory (default: ~/.cursor for Cursor)")
+	client := f.String("client", "", "Client: codex, claudecode, antigravity, vscode, cursor, opencode")
+	directory := f.String("config-dir", os.Getenv("FOLIO_CONFIG_DIR"), "Optional client configuration directory")
 	if err := f.Parse(args); err != nil {
 		return err
 	}
-	if *client != "cursor" || f.NArg() != 0 {
-		return errors.New("usage: folio connect --client cursor [--config-dir DIRECTORY]")
+	if f.NArg() != 0 {
+		return errors.New("usage: folio connect --client CLIENT [--config-dir DIRECTORY]")
+	}
+	launcher, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	launcher, err = filepath.Abs(launcher)
+	if err != nil {
+		return err
+	}
+	if *client != "cursor" && *client != "opencode" {
+		var name string
+		var arguments, environment []string
+		switch *client {
+		case "codex":
+			if *directory != "" {
+				return errors.New("Codex configuration directory overrides are not supported")
+			}
+			name, arguments = "codex", []string{"mcp", "add", "folio", "--", launcher, "mcp"}
+		case "claudecode":
+			name, arguments = "claude", []string{"mcp", "add", "--scope", "user", "--transport", "stdio", "folio", "--", launcher, "mcp"}
+			if *directory != "" {
+				environment = append(environment, "CLAUDE_CONFIG_DIR="+*directory)
+			}
+		case "antigravity":
+			if *directory != "" {
+				return errors.New("Antigravity CLI does not support a verified isolated configuration directory; no settings were changed")
+			}
+			name, arguments = "agy", []string{"mcp", "add", "--type", "stdio", "folio", launcher, "mcp"}
+		case "vscode":
+			configuration, _ := json.Marshal(map[string]any{"name": "folio", "type": "stdio", "command": launcher, "args": []string{"mcp"}})
+			name, arguments = "code", []string{"--add-mcp", string(configuration)}
+			if *directory != "" {
+				arguments = append([]string{"--user-data-dir", *directory}, arguments...)
+			}
+		default:
+			return errors.New("choose codex, claudecode, antigravity, vscode, cursor, or opencode")
+		}
+		path, err := exec.LookPath(name)
+		if err != nil {
+			return fmt.Errorf("%s CLI was not found; install it and run setup again", name)
+		}
+		cmd := exec.Command(path, arguments...)
+		cmd.Env = append(os.Environ(), environment...)
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("%s MCP registration failed: %w", name, err)
+		}
+		return nil
+	}
+	if *directory == "" && *client == "opencode" {
+		if path := os.Getenv("OPENCODE_CONFIG"); path != "" {
+			return configureJSONClient(*client, path, launcher)
+		}
+		base := os.Getenv("XDG_CONFIG_HOME")
+		if base == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+			base = filepath.Join(home, ".config")
+		}
+		*directory = filepath.Join(base, "opencode")
 	}
 	if *directory == "" {
 		home, err := os.UserHomeDir()
@@ -28,8 +91,28 @@ func connect(args []string) error {
 		}
 		*directory = filepath.Join(home, ".cursor")
 	}
-	path := filepath.Join(*directory, "mcp.json")
-	changed, err := mergeCursorConfig(path)
+	filename := "mcp.json"
+	if *client == "opencode" {
+		filename = "opencode.json"
+	}
+	return configureJSONClient(*client, filepath.Join(*directory, filename), launcher)
+}
+
+func configureJSONClient(client, path, launcher string) error {
+	key := "mcpServers"
+	entry := map[string]any{"command": launcher, "args": []string{"mcp"}}
+	if client == "opencode" {
+		key = "mcp"
+		entry = map[string]any{"type": "local", "command": []string{launcher, "mcp"}, "enabled": true}
+		if _, err := os.Stat(path + "c"); err == nil {
+			return errors.New("an OpenCode JSONC configuration exists; merge the Folio server into that file instead")
+		}
+	}
+	value, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	changed, err := mergeClientConfig(path, key, value)
 	if err != nil {
 		return err
 	}
@@ -37,17 +120,29 @@ func connect(args []string) error {
 	if changed {
 		status = "configured"
 	}
-	return output(map[string]string{"client": "cursor", "path": path, "status": status})
+	return output(map[string]string{"client": client, "path": path, "status": status})
 }
 
 func mergeCursorConfig(path string) (bool, error) {
+	launcher, err := os.Executable()
+	if err != nil {
+		return false, err
+	}
+	value, err := json.Marshal(map[string]any{"command": launcher, "args": []string{"mcp"}})
+	if err != nil {
+		return false, err
+	}
+	return mergeClientConfig(path, "mcpServers", value)
+}
+
+func mergeClientConfig(path, key string, launcher json.RawMessage) (bool, error) {
 	info, err := os.Lstat(path)
 	exists := err == nil
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return false, err
 	}
 	if exists && !info.Mode().IsRegular() {
-		return false, errors.New("Cursor configuration must be a regular file; existing file was not changed")
+		return false, errors.New("MCP configuration must be a regular file; existing file was not changed")
 	}
 	var original []byte
 	if exists {
@@ -59,16 +154,15 @@ func mergeCursorConfig(path string) (bool, error) {
 	root := map[string]json.RawMessage{}
 	if exists {
 		if err = json.Unmarshal(original, &root); err != nil || root == nil {
-			return false, errors.New("Cursor mcp.json must be a valid JSON object; existing file was not changed")
+			return false, errors.New("MCP configuration must be a valid JSON object; existing file was not changed")
 		}
 	}
 	servers := map[string]json.RawMessage{}
-	if raw, ok := root["mcpServers"]; ok {
+	if raw, ok := root[key]; ok {
 		if err = json.Unmarshal(raw, &servers); err != nil || servers == nil {
-			return false, errors.New("Cursor mcpServers must be a JSON object; existing file was not changed")
+			return false, errors.New("MCP server map must be a JSON object; existing file was not changed")
 		}
 	}
-	launcher := json.RawMessage(`{"command":"folio","args":["mcp"]}`)
 	if existing, ok := servers["folio"]; ok {
 		var got, want any
 		if json.Unmarshal(existing, &got) == nil && json.Unmarshal(launcher, &want) == nil {
@@ -78,10 +172,10 @@ func mergeCursorConfig(path string) (bool, error) {
 				return false, nil
 			}
 		}
-		return false, errors.New("Cursor already has a different folio server; review it manually before connecting (existing file was not changed)")
+		return false, errors.New("This client already has a different folio server; review it manually before connecting (existing file was not changed)")
 	}
 	servers["folio"] = launcher
-	root["mcpServers"], err = json.Marshal(servers)
+	root[key], err = json.Marshal(servers)
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +209,7 @@ func mergeCursorConfig(path string) (bool, error) {
 	// untouched until the final same-directory rename.
 	current, readErr := os.ReadFile(path)
 	if exists && (readErr != nil || !bytes.Equal(current, original)) || !exists && !errors.Is(readErr, os.ErrNotExist) {
-		return false, fmt.Errorf("Cursor configuration changed during setup; retry after reviewing %s", path)
+		return false, fmt.Errorf("MCP configuration changed during setup; retry after reviewing %s", path)
 	}
 	if err = os.Rename(tmp.Name(), path); err != nil {
 		return false, err

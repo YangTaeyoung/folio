@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -29,12 +30,12 @@ def main():
     app = f'http://folio.localhost:{app_port}'
     errors, checks, audits = [], [], []
     registrations = {
-        'Codex': 'codex mcp add folio -- folio mcp',
-        'Claude Code': 'claude mcp add --scope user --transport stdio folio -- folio mcp',
-        'Antigravity CLI': 'agy mcp add --type stdio folio folio mcp',
-        'VS Code · Copilot': 'code --add-mcp',
+        'Codex': 'folio connect --client codex',
+        'Claude Code': 'folio connect --client claudecode',
+        'Antigravity CLI': 'folio connect --client antigravity',
+        'VS Code · Copilot': 'folio connect --client vscode',
         'Cursor': 'folio connect --client cursor',
-        'OpenCode': 'opencode mcp add folio -- folio mcp',
+        'OpenCode': 'folio connect --client opencode',
     }
     with tempfile.TemporaryDirectory(prefix='folio-agent-guides-') as data, open(output/'server.log', 'w+') as log:
         process = subprocess.Popen([
@@ -79,12 +80,13 @@ def main():
                             expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
                             copied = page.evaluate('navigator.clipboard.readText()')
                             assert command in copied and '--token-stdin' in copied and app in copied and 'folio doctor' in copied
-                            assert "'folio_" in copied, 'connection command must include the newly issued fixture token'
+                            assert '"token": "folio_' in copied, 'connection command must include the newly issued fixture token'
                             expect(guide).to_contain_text('folio_capabilities')
                             # Credentials are not displayed unless explicitly revealed.
                             if guide.locator('.agent-command-disclosure').get_attribute('open') is None:
                                 guide.locator('.agent-command-disclosure > summary').click()
-                            assert 'folio_' not in guide.locator('.agent-command-text').input_value()
+                            fixture_token = re.search(r'"token": "(folio_[A-Za-z0-9_-]{43})"', copied).group(1)
+                            assert fixture_token not in guide.locator('.agent-command-text').input_value()
                             assert '••••••••' in guide.locator('.agent-command-text').input_value()
                             assert 'YOUR_API_TOKEN' not in guide.inner_text()
                             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), (mode, width, name)
@@ -96,7 +98,7 @@ def main():
                             (output/'contrast.json').write_text(json.dumps(audits, indent=2, ensure_ascii=False))
                             assert not violations, (mode, width, name, violations)
                         page.screenshot(path=str(output/f'{mode}-{width}-agents.png'), full_page=True)
-                checks.append('six-agent-commands-both-themes-three-widths')
+                checks.append('six-agent-prompts-both-themes-three-widths')
                 # A second copy and a shell change reuse the same issued token.
                 page.set_viewport_size({'width': 1440, 'height': 1100})
                 guide.get_by_role('button', name='Codex', exact=True).click()
@@ -106,14 +108,16 @@ def main():
                 copied = page.evaluate('navigator.clipboard.readText()')
                 assert registrations['Codex'] in copied and '--token-stdin' in copied and app in copied
                 assert len(context.request.get(app+'/api/tokens').json()['tokens']) == len(before)
+                guide.get_by_role('button', name='터미널에서 실행', exact=True).click()
                 guide.get_by_role('button', name='Windows · PowerShell', exact=True).click()
                 guide.get_by_role('button', name='VS Code · Copilot', exact=True).click()
                 guide.locator('.agent-connection-action button').click()
                 expect(guide.locator('.agent-connection-action button')).to_have_text('다시 복사')
                 copied = page.evaluate('navigator.clipboard.readText()')
-                assert copied.startswith('& {') and 'code --% --add-mcp' in copied and '--token-stdin' in copied
+                assert copied.startswith('& {') and 'connect --client vscode' in copied and '--token-stdin' in copied
                 assert len(context.request.get(app+'/api/tokens').json()['tokens']) == len(before)
                 checks.append('single-copy-includes-token-login-registration-verification-and-reuses-token')
+                guide.get_by_role('button', name='에이전트에 붙여넣기', exact=True).click()
                 # Revocation unlocks options; a new explicit copy applies opt-in scopes.
                 csrf = response.json()['csrfToken']
                 records = context.request.get(app+'/api/tokens').json()['tokens']
@@ -147,7 +151,7 @@ def main():
                     page.evaluate('(locale) => localStorage.setItem("folio.locale", locale)', locale)
                     page.reload()
                     expect(guide.get_by_role('heading', name=catalog['사용할 에이전트 선택'], exact=True)).to_be_visible()
-                    expect(guide.get_by_role('button', name=catalog['연결 명령 복사'], exact=True)).to_be_visible()
+                    expect(guide.get_by_role('button', name=catalog['설정 프롬프트 복사'], exact=True)).to_be_visible()
                     for name in registrations:
                         guide.get_by_role('button', name=name, exact=True).click()
                         expect(guide.locator('.agent-client-options button[aria-pressed="true"]')).to_have_text(name)
