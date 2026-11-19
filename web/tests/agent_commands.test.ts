@@ -87,35 +87,24 @@ test("registration commands pass only the local stdio launcher, without credenti
       );
     }
   }
-  assert.equal(
-    registrationCommand("opencode", "posix"),
-    "opencode mcp add folio -- folio mcp",
-  );
-  assert.equal(
-    registrationCommand("cursor", "posix"),
-    "folio connect --client cursor",
-  );
-  assert.equal(
-    registrationCommand("antigravity", "posix"),
-    "agy mcp add --type stdio folio folio mcp",
-  );
-  const args = spawnSync(
-    "/bin/bash",
-    [
-      "-c",
-      `set -- ${registrationCommand("vscode", "posix")}; printf '%s' "$3"`,
-    ],
-    { encoding: "utf8" },
-  );
-  assert.deepEqual(JSON.parse(args.stdout), {
-    name: "folio",
-    type: "stdio",
-    command: "folio",
-    args: ["mcp"],
-  });
-  assert.deepEqual(JSON.parse(cursorConfiguration), {
-    mcpServers: { folio: { command: "folio", args: ["mcp"] } },
-  });
+  for (const client of [
+    "codex",
+    "claudecode",
+    "antigravity",
+    "vscode",
+    "cursor",
+    "opencode",
+  ] as const) {
+    assert.equal(
+      registrationCommand(client, "posix"),
+      `folio connect --client ${client}`,
+    );
+    assert.equal(
+      registrationCommand(client, "powershell"),
+      `folio connect --client ${client}`,
+    );
+  }
+  assert.equal(JSON.parse(cursorConfiguration).mcpServers.folio.args[0], "mcp");
 });
 
 test("PowerShell login quotes data and clears its temporary secret allocation", () => {
@@ -132,7 +121,7 @@ test("PowerShell login quotes data and clears its temporary secret allocation", 
   assert.match(command, /Remove-Variable folioSecret, folioPointer/);
   assert.match(
     registrationCommand("vscode", "powershell"),
-    /^code --% --add-mcp \{\\"name\\":/,
+    /^folio connect --client vscode$/,
   );
 });
 
@@ -140,7 +129,7 @@ test("one pasted connection script preserves token data and stops on login or re
   const directory = mkdtempSync(join(tmpdir(), "folio-connect-command-"));
   try {
     const stub =
-      '#!/bin/bash\nprintf "%s\\0" "$0" "$@" >> "$FOLIO_TEST_ARGS"\nif [ "$1" = login ]; then cat > "$FOLIO_TEST_STDIN"; exit "${FOLIO_TEST_LOGIN_EXIT:-0}"; fi\nif [ "$1" = mcp ] && [ "$2" = add ]; then exit "${FOLIO_TEST_REGISTER_EXIT:-0}"; fi\n';
+      '#!/bin/bash\nprintf "%s\\0" "$0" "$@" >> "$FOLIO_TEST_ARGS"\nif [ "$1" = login ]; then cat > "$FOLIO_TEST_STDIN"; exit "${FOLIO_TEST_LOGIN_EXIT:-0}"; fi\nif [ "$1" = connect ]; then exit "${FOLIO_TEST_REGISTER_EXIT:-0}"; fi\n';
     for (const executable of [
       "folio",
       "codex",
@@ -199,12 +188,8 @@ test("one pasted connection script preserves token data and stops on login or re
           );
           assert.equal(calls.includes("doctor"), loginExit === 0);
           assert.equal(
-            calls
-              .split("\0")
-              .some(
-                (argument) => argument === "add" || argument === "--add-mcp",
-              ),
-            loginExit === 0 && client !== "cursor",
+            calls.split("\0").some((argument) => argument === "connect"),
+            loginExit === 0,
             `${shell} ${client} exit=${loginExit}: ${JSON.stringify(calls.split("\0"))}`,
           );
           assert.equal(existsSync(marker), false);
@@ -254,9 +239,143 @@ test("PowerShell one-paste script isolates variables and checks every native exi
   assert.match(command, /\$folioToken = 'folio_''\$literal'/);
   assert.match(
     command,
-    /\$folioToken \| folio login --url 'https:\/\/folio.example\/a''b' --token-stdin/,
+    /\$folioToken \| & \$folioExecutable login --url 'https:\/\/folio.example\/a''b' --token-stdin/,
   );
-  assert.match(command, /agy mcp add --type stdio folio folio mcp/);
+  assert.match(command, /& \$folioExecutable connect --client antigravity/);
   assert.match(command, /Remove-Variable folioToken/);
   assert.equal((command.match(/LASTEXITCODE/g) || []).length, 4);
+});
+
+test("missing client prints a useful error before touching credentials", () => {
+  const directory = mkdtempSync(join(tmpdir(), "folio-missing-client-"));
+  try {
+    const calls = join(directory, "calls");
+    writeFileSync(
+      join(directory, "folio"),
+      '#!/bin/bash\nprintf called > "$FOLIO_TEST_ARGS"\n',
+      { mode: 0o700 },
+    );
+    const token = "folio_missing-client-fixture";
+    const result = spawnSync(
+      "/bin/bash",
+      [
+        "-f",
+        "-c",
+        connectionCommand("codex", "https://folio.example", token, "posix"),
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: `${directory}:/usr/bin:/bin`,
+          BASH_ENV: "/dev/null",
+          FOLIO_TEST_ARGS: calls,
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /codex.*(install|found)/i);
+    assert.equal(existsSync(calls), false);
+    assert.equal((result.stdout + result.stderr).includes(token), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a Folio binary outside PATH is found without running an installer", () => {
+  const directory = mkdtempSync(join(tmpdir(), "folio-local-bin-"));
+  try {
+    const bin = join(directory, "clients"),
+      local = join(directory, "local");
+    spawnSync("/bin/mkdir", [bin, local]);
+    writeFileSync(join(bin, "codex"), "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+    writeFileSync(
+      join(local, "folio"),
+      '#!/bin/sh\ncase "$1" in version) echo "Folio v0.8.2";; login) cat > "$FOLIO_TEST_STDIN";; connect) printf "%s\\n" "$@" > "$FOLIO_TEST_ARGS";; esac\n',
+      { mode: 0o700 },
+    );
+    const result = spawnSync(
+      "/bin/bash",
+      [
+        "-f",
+        "-c",
+        connectionCommand(
+          "codex",
+          "https://folio.example",
+          "fixture-only-secret",
+          "posix",
+        ),
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: `${bin}:/usr/bin:/bin`,
+          FOLIO_INSTALL_DIR: local,
+          BASH_ENV: "/dev/null",
+          FOLIO_TEST_STDIN: join(directory, "stdin"),
+          FOLIO_TEST_ARGS: join(directory, "args"),
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      readFileSync(join(directory, "stdin"), "utf8"),
+      "fixture-only-secret",
+    );
+    assert.equal(
+      readFileSync(join(directory, "args"), "utf8"),
+      "connect\n--client\ncodex\n",
+    );
+    assert.match(result.stdout, /Folio connected/);
+    assert.doesNotMatch(result.stdout, /fixture-only-secret/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a failed CLI download stops visibly before login or MCP registration", () => {
+  const directory = mkdtempSync(join(tmpdir(), "folio-download-failure-"));
+  try {
+    writeFileSync(
+      join(directory, "codex"),
+      '#!/bin/sh\nprintf called > "$FOLIO_TEST_ARGS"\n',
+      { mode: 0o700 },
+    );
+    writeFileSync(join(directory, "curl"), "#!/bin/sh\nexit 22\n", {
+      mode: 0o700,
+    });
+    const result = spawnSync(
+      "/bin/bash",
+      [
+        "-f",
+        "-c",
+        connectionCommand(
+          "codex",
+          "https://folio.example",
+          "fixture-private-token",
+          "posix",
+        ),
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: `${directory}:/usr/bin:/bin`,
+          BASH_ENV: "/dev/null",
+          FOLIO_INSTALL_DIR: join(directory, "empty"),
+          FOLIO_TEST_ARGS: join(directory, "called"),
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 22, result.stderr);
+    assert.match(result.stderr, /installing Folio CLI/);
+    assert.equal(existsSync(join(directory, "called")), false);
+    assert.equal(
+      (result.stdout + result.stderr).includes("fixture-private-token"),
+      false,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

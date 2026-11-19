@@ -215,3 +215,11 @@
     margin-left: 16px;
   }
 }
+
+.agent-command-text.is-prompt {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

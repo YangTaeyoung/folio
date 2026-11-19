@@ -5,7 +5,7 @@ import { t, useLocale } from "./i18n";
 import { ErrorBox, Field, Spinner } from "./ui";
 import { Select } from "./Select";
 import { ServiceIcon } from "./ServiceIcon";
-import { connectionCommand } from "./agentClientCommands";
+import { connectionCommand, setupPrompt } from "./agentClientCommands";
 import type { AgentClient, GuideShell } from "./agentClientCommands";
 import type { Token } from "./types";
 import "./AgentClientGuides.css";
@@ -49,6 +49,7 @@ export function AgentClientGuides({
   onConnected?: () => void;
 }) {
   useLocale();
+  const [delivery, setDelivery] = useState<"prompt" | "command">("prompt");
   const [selected, setSelected] = useState<AgentClient>("codex");
   const [shell, setShell] = useState<GuideShell>(() =>
     /Windows/i.test(navigator.userAgent) ? "powershell" : "posix",
@@ -83,9 +84,11 @@ export function AgentClientGuides({
   const currentReview = current
     ? current.record.scopes.includes("review")
     : review;
-  const command = current
-    ? connectionCommand(selected, origin, current.token, shell)
-    : "";
+  const connectionText = (token: string) =>
+    delivery === "prompt"
+      ? setupPrompt(selected, origin, token, t)
+      : connectionCommand(selected, origin, token, shell);
+  const command = current ? connectionText(current.token) : "";
 
   async function prepareAndCopy() {
     if (inFlight.current) return;
@@ -128,9 +131,7 @@ export function AgentClientGuides({
         onConnected?.();
       }
       try {
-        await copy(
-          connectionCommand(selected, origin, connection.token, shell),
-        );
+        await copy(connectionText(connection.token));
         setCopied(true);
       } catch {
         // Retain this exact issued token for retry or explicit manual selection.
@@ -154,7 +155,7 @@ export function AgentClientGuides({
       </div>
       <p className="subtle">
         {t(
-          "사용할 에이전트를 고르고 명령 하나를 터미널에 붙여넣으세요. 토큰 발급과 연결 준비를 한 번에 처리합니다.",
+          "사용할 에이전트를 고르고 설정 프롬프트를 복사해 붙여넣으세요. 에이전트가 CLI 설치부터 인증과 MCP 연결까지 진행합니다.",
         )}
       </p>
       <div
@@ -188,33 +189,59 @@ export function AgentClientGuides({
         <div
           className="agent-shell-options"
           role="group"
-          aria-label={t("터미널 환경")}
+          aria-label={t("연결 방법")}
         >
-          <button
-            type="button"
-            aria-pressed={shell === "posix"}
-            disabled={busy}
-            onClick={() => {
-              setShell("posix");
-              setCopied(false);
-              setCopyFailed(false);
-            }}
-          >
-            macOS / Linux
-          </button>
-          <button
-            type="button"
-            aria-pressed={shell === "powershell"}
-            disabled={busy}
-            onClick={() => {
-              setShell("powershell");
-              setCopied(false);
-              setCopyFailed(false);
-            }}
-          >
-            Windows · PowerShell
-          </button>
+          {(["prompt", "command"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              disabled={busy}
+              aria-pressed={delivery === mode}
+              onClick={() => {
+                setDelivery(mode);
+                setCopied(false);
+                setCopyFailed(false);
+                setRevealed(false);
+              }}
+            >
+              {mode === "prompt"
+                ? t("에이전트에 붙여넣기")
+                : t("터미널에서 실행")}
+            </button>
+          ))}
         </div>
+        {delivery === "command" && (
+          <div
+            className="agent-shell-options"
+            role="group"
+            aria-label={t("터미널 환경")}
+          >
+            <button
+              type="button"
+              aria-pressed={shell === "posix"}
+              disabled={busy}
+              onClick={() => {
+                setShell("posix");
+                setCopied(false);
+                setCopyFailed(false);
+              }}
+            >
+              macOS / Linux
+            </button>
+            <button
+              type="button"
+              aria-pressed={shell === "powershell"}
+              disabled={busy}
+              onClick={() => {
+                setShell("powershell");
+                setCopied(false);
+                setCopyFailed(false);
+              }}
+            >
+              Windows · PowerShell
+            </button>
+          </div>
+        )}
         <a
           className="agent-doc-link"
           href={client.docs}
@@ -303,13 +330,21 @@ export function AgentClientGuides({
           ) : (
             <Copy size={16} />
           )}
-          {copied ? t("다시 복사") : t("연결 명령 복사")}
+          {copied
+            ? t("다시 복사")
+            : delivery === "prompt"
+              ? t("설정 프롬프트 복사")
+              : t("연결 명령 복사")}
         </button>
         <span role="status" className="agent-copy-status">
           {copied
-            ? t("복사했습니다. 터미널에 붙여넣어 연결하세요.")
+            ? delivery === "prompt"
+              ? t("복사했습니다. {agent}에 붙여넣으세요.", {
+                  agent: client.name,
+                })
+              : t("복사했습니다. 터미널에 붙여넣어 연결하세요.")
             : current
-              ? t("발급한 토큰으로 연결 명령을 복사합니다.")
+              ? t("발급한 토큰을 포함해 다시 복사합니다.")
               : t("클릭하면 이 에이전트용 토큰을 발급합니다.")}
         </span>
       </div>
@@ -317,7 +352,7 @@ export function AgentClientGuides({
       {copyFailed && (
         <p className="agent-copy-error" role="alert">
           {t(
-            "복사하지 못했습니다. 다시 복사하거나 명령을 표시해 직접 복사하세요. 토큰은 다시 발급하지 않습니다.",
+            "복사하지 못했습니다. 내용을 표시해 직접 복사하거나 다시 시도하세요. 토큰은 다시 발급하지 않습니다.",
           )}
         </p>
       )}
@@ -326,9 +361,17 @@ export function AgentClientGuides({
           className="agent-extra-guide agent-command-disclosure"
           open={copyFailed || undefined}
         >
-          <summary>{t("연결 명령 보기")}</summary>
+          <summary>
+            {delivery === "prompt" ? t("프롬프트 보기") : t("연결 명령 보기")}
+          </summary>
           <div className="agent-command-toolbar">
-            <span>{shell === "posix" ? "Bash / zsh" : "PowerShell"}</span>
+            <span>
+              {delivery === "prompt"
+                ? client.name
+                : shell === "posix"
+                  ? "Bash / zsh"
+                  : "PowerShell"}
+            </span>
             <button
               type="button"
               className="button ghost compact"
@@ -340,30 +383,28 @@ export function AgentClientGuides({
             </button>
           </div>
           <textarea
-            className="agent-command-text"
+            className={`agent-command-text${delivery === "prompt" ? " is-prompt" : ""}`}
             readOnly
             rows={5}
             spellCheck={false}
-            aria-label={t("연결 명령")}
-            value={
-              revealed
-                ? command
-                : connectionCommand(selected, origin, "••••••••", shell)
+            aria-label={
+              delivery === "prompt" ? t("설정 프롬프트") : t("연결 명령")
             }
+            value={revealed ? command : connectionText("••••••••")}
             onFocus={(event) => {
               if (revealed) event.target.select();
             }}
           />
           <p className="agent-guide-hint">
             {t(
-              "명령에는 비밀 토큰이 포함됩니다. 공유하지 마세요. 토큰은 에이전트 설정에 넣지 않고 Folio CLI의 사용자 설정에 저장합니다.",
+              "복사한 내용에는 비밀 토큰이 포함됩니다. 공개 채널에 공유하지 마세요. 토큰은 MCP 설정이 아닌 Folio CLI의 사용자 설정에 저장합니다.",
             )}
           </p>
         </details>
       )}
       <p className="agent-guide-hint">
         {t(
-          "Folio CLI와 선택한 에이전트가 설치되어 있어야 합니다. 명령 실행 후 에이전트를 다시 열고 “folio_capabilities 도구로 연결을 확인해 줘”라고 요청하세요.",
+          "설정 후 에이전트를 다시 열고 “folio_capabilities 도구로 연결을 확인해 줘”라고 요청하세요. 터미널 명령은 macOS·Linux에서 CLI 설치와 업데이트도 처리합니다.",
         )}
       </p>
       {selected === "vscode" && (
