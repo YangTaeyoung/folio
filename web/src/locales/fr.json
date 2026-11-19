@@ -388,8 +388,6 @@
   "보고서, 프로토타입, 작은 웹앱. 만든 것을 올리거나 에이전트에게 게시를 맡기세요.": "Ajoutez vos rapports, prototypes et petites applications web, ou confiez leur publication à un agent.",
   "사용 중": "Activé",
   "사용 안 함": "Désactivé",
-  "설치 관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 Google 연결 없이 사용할 수 있습니다.": "Fonction facultative configurée par l’administrateur, désactivée par défaut. La connexion par mot de passe fonctionne sans Google.",
-  "Google 로그인 설정 불러오는 중": "Chargement des paramètres Google",
   "다시 불러오기": "Recharger",
   "Google 로그인 사용": "Connexion Google activée",
   "이 설치를 위해 만든 웹 애플리케이션 OAuth 클라이언트 ID입니다.": "ID client OAuth d’application web créé pour cette installation.",
@@ -400,7 +398,6 @@
   "허용할 Google Workspace 도메인 (선택)": "Domaines Google Workspace autorisés (facultatif)",
   "예: example.com, team.example.com. 입력하면 해당 Workspace 조직의 계정만 허용합니다. 비워 두면 Gmail과 Google Workspace 계정을 허용합니다. 어느 경우든 Folio에 미리 등록한 활성 계정이어야 합니다.": "Ex. : example.com, team.example.com. Limitez l’accès à ces organisations Workspace ou laissez vide pour autoriser Gmail et Google Workspace. Un compte actif déjà enregistré dans Folio reste obligatoire.",
   "저장 중": "Enregistrement",
-  "Google 로그인 설정 저장": "Enregistrer les paramètres Google",
   "Google Cloud에서 연결하기": "Configurer dans Google Cloud",
   "설정 순서와 콜백 주소": "Étapes et adresse de rappel",
   "이 설치 소유자의 Google Cloud 프로젝트에서 Google Auth Platform의 브랜딩과 대상을 설정합니다. 테스트 상태라면 로그인할 계정을 테스트 사용자로 추가합니다.": "Dans le projet Google Cloud du propriétaire, configurez l’identité et l’audience dans Google Auth Platform. En mode test, ajoutez les comptes concernés aux utilisateurs de test.",
@@ -410,7 +407,6 @@
   "승인된 리디렉션 URI": "URI de redirection autorisé",
   "에 그대로 등록합니다.": ", exactement comme indiqué.",
   "클라이언트 유형을 웹 애플리케이션으로 만들고, 아래 주소를 승인된 리디렉션 URI에 그대로 등록합니다.": "Créez un client de type Application web et ajoutez l’adresse ci-dessous à l’identique dans les URI de redirection autorisés.",
-  "Client ID와 Client Secret을 위에 입력하고 Google 로그인을 켠 뒤 저장합니다.": "Saisissez le Client ID et le Client Secret ci-dessus, activez la connexion Google, puis enregistrez.",
   "구성원 메뉴에서 사용할 이메일을 미리 등록한 후 Google 로그인을 확인합니다. 기존 비밀번호 관리자 계정은 복구용으로 유지해 주세요.": "Enregistrez l’e-mail dans Membres avant de tester Google. Conservez un compte administrateur avec mot de passe pour la récupération.",
   "현재 서버의 관리 주소로 생성한 콜백 주소입니다. Google Cloud에 동일하게 등록합니다.": "Adresse de rappel générée à partir de l’adresse d’administration du serveur. Enregistrez-la à l’identique dans Google Cloud.",
   "콜백 주소 복사": "Copier l’adresse de rappel",
@@ -887,5 +883,8 @@
   "클릭하면 이 에이전트용 토큰을 발급합니다.": "Cliquez pour créer un jeton pour cet agent.",
   "토큰 만료": "Expiration du jeton",
   "토큰 숨기기": "Masquer le jeton",
-  "토큰 표시": "Afficher le jeton"
+  "토큰 표시": "Afficher le jeton",
+  "관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 계속 사용할 수 있습니다.": "Fonction facultative configurée par un administrateur, désactivée par défaut. La connexion par mot de passe reste disponible.",
+  "사용": "Activer",
+  "Client ID와 Client Secret을 입력하고 사용을 선택한 뒤 저장합니다.": "Saisissez le Client ID et le Client Secret, sélectionnez Activer, puis enregistrez."
 }
