@@ -110,15 +110,15 @@ def main():
                     page.locator('.primary-navigation').get_by_role('button', name='설정', exact=True).click()
                     page.locator('.settings-navigation').get_by_role('button', name='조직 설정', exact=True).click()
                     settings = page.locator('.google-auth-settings')
-                    expect(settings.get_by_label('Google 로그인 사용', exact=True)).not_to_be_checked()
+                    expect(settings.get_by_label('사용', exact=True)).not_to_be_checked()
                     expect(settings.get_by_label('승인된 리디렉션 URI', exact=True)).to_have_value(app + '/api/auth/google/callback')
                     expect(page.get_by_role('heading', level=1)).to_have_count(1)
                     settings.get_by_label('Client ID', exact=True).fill(client_id)
                     settings.get_by_label('Client Secret', exact=True).fill(fake_secret)
                     settings.get_by_label('허용할 Google Workspace 도메인 (선택)', exact=True).fill('example.com')
-                    settings.get_by_label('Google 로그인 사용', exact=True).check()
+                    settings.get_by_label('사용', exact=True).check()
                     with page.expect_response(lambda response: response.url == app + '/api/admin/auth/google' and response.request.method == 'PATCH') as first_save:
-                        settings.get_by_role('button', name='Google 로그인 설정 저장', exact=True).click()
+                        settings.get_by_role('button', name='저장', exact=True).click()
                     assert first_save.value.status == 200, first_save.value.text()
                     config = first_save.value.json()
                     assert config['enabled'] and config['clientSecretConfigured']
@@ -132,7 +132,7 @@ def main():
                     settings.get_by_label('허용할 Google Workspace 도메인 (선택)', exact=True).fill('')
                     expect(settings.get_by_role('status')).to_have_count(0)
                     with page.expect_response(lambda response: response.url == app + '/api/admin/auth/google' and response.request.method == 'PATCH') as second_save:
-                        settings.get_by_role('button', name='Google 로그인 설정 저장', exact=True).click()
+                        settings.get_by_role('button', name='저장', exact=True).click()
                     assert second_save.value.status == 200, second_save.value.text()
                     assert 'clientSecret' not in second_save.value.request.post_data_json
                     assert second_save.value.json()['clientSecretConfigured'] is True
@@ -141,7 +141,7 @@ def main():
                     page.reload()
                     expect(settings.get_by_label('Client Secret', exact=True)).to_have_value('')
                     expect(settings.get_by_label('Client Secret', exact=True)).to_have_attribute('placeholder', '저장된 비밀 키 유지')
-                    expect(settings.get_by_label('Google 로그인 사용', exact=True)).to_be_checked()
+                    expect(settings.get_by_label('사용', exact=True)).to_be_checked()
                     checks.append('real-ui-blank-secret-retains-config-after-reload')
 
                     no_overflow(page, 'settings desktop')

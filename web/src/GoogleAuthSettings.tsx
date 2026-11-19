@@ -72,13 +72,13 @@ export function GoogleAuthSettings() {
       </div>
       <p className="subtle">
         {translate(
-          "설치 관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 Google 연결 없이 사용할 수 있습니다.",
+          "관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 계속 사용할 수 있습니다.",
         )}
       </p>
       {loading ? (
         <div className="loading-row">
           <Spinner />
-          {translate("Google 로그인 설정 불러오는 중")}
+          {translate("불러오는 중")}
         </div>
       ) : loadError ? (
         <>
@@ -125,7 +125,7 @@ export function GoogleAuthSettings() {
                     checked={enabled}
                     onChange={(event) => setEnabled(event.target.checked)}
                   />
-                  {translate("Google 로그인 사용")}
+                  {translate("사용")}
                 </label>
                 <div className="form-grid">
                   <Field
@@ -192,7 +192,7 @@ export function GoogleAuthSettings() {
                         {translate("저장 중")}
                       </>
                     ) : (
-                      translate("Google 로그인 설정 저장")
+                      translate("저장")
                     )}
                   </button>
                   {saved && (
@@ -228,7 +228,7 @@ export function GoogleAuthSettings() {
                   </li>
                   <li>
                     {translate(
-                      "Client ID와 Client Secret을 위에 입력하고 Google 로그인을 켠 뒤 저장합니다.",
+                      "Client ID와 Client Secret을 입력하고 사용을 선택한 뒤 저장합니다.",
                     )}
                   </li>
                   <li>

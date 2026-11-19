@@ -388,8 +388,6 @@
   "보고서, 프로토타입, 작은 웹앱. 만든 것을 올리거나 에이전트에게 게시를 맡기세요.": "Upload reports, prototypes and small web apps, or ask an agent to publish them.",
   "사용 중": "Enabled",
   "사용 안 함": "Disabled",
-  "설치 관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 Google 연결 없이 사용할 수 있습니다.": "Optional feature configured by the installation administrator. Off by default; password sign-in works without Google.",
-  "Google 로그인 설정 불러오는 중": "Loading Google sign-in settings",
   "다시 불러오기": "Reload",
   "Google 로그인 사용": "Google sign-in enabled",
   "이 설치를 위해 만든 웹 애플리케이션 OAuth 클라이언트 ID입니다.": "The web application OAuth client ID created for this installation.",
@@ -400,7 +398,6 @@
   "허용할 Google Workspace 도메인 (선택)": "Allowed Google Workspace domains (optional)",
   "예: example.com, team.example.com. 입력하면 해당 Workspace 조직의 계정만 허용합니다. 비워 두면 Gmail과 Google Workspace 계정을 허용합니다. 어느 경우든 Folio에 미리 등록한 활성 계정이어야 합니다.": "e.g. example.com, team.example.com. Restrict sign-in to these Workspace organizations, or leave blank to allow Gmail and Google Workspace accounts. An active account already registered in Folio is always required.",
   "저장 중": "Saving",
-  "Google 로그인 설정 저장": "Save Google sign-in settings",
   "Google Cloud에서 연결하기": "Configure in Google Cloud",
   "설정 순서와 콜백 주소": "Setup steps and callback address",
   "이 설치 소유자의 Google Cloud 프로젝트에서 Google Auth Platform의 브랜딩과 대상을 설정합니다. 테스트 상태라면 로그인할 계정을 테스트 사용자로 추가합니다.": "In the installation owner’s Google Cloud project, configure branding and audience in Google Auth Platform. In testing mode, add the sign-in accounts as test users.",
@@ -410,7 +407,6 @@
   "승인된 리디렉션 URI": "Authorized redirect URI",
   "에 그대로 등록합니다.": " exactly as shown.",
   "클라이언트 유형을 웹 애플리케이션으로 만들고, 아래 주소를 승인된 리디렉션 URI에 그대로 등록합니다.": "Create a Web application client and register the address below exactly as an Authorized redirect URI.",
-  "Client ID와 Client Secret을 위에 입력하고 Google 로그인을 켠 뒤 저장합니다.": "Enter the Client ID and Client Secret above, enable Google sign-in, then save.",
   "구성원 메뉴에서 사용할 이메일을 미리 등록한 후 Google 로그인을 확인합니다. 기존 비밀번호 관리자 계정은 복구용으로 유지해 주세요.": "Register the email in Members before testing Google sign-in. Keep an existing password administrator account for recovery.",
   "현재 서버의 관리 주소로 생성한 콜백 주소입니다. Google Cloud에 동일하게 등록합니다.": "Callback address generated from this server’s management address. Register it exactly in Google Cloud.",
   "콜백 주소 복사": "Copy callback address",
@@ -887,5 +883,8 @@
   "클릭하면 이 에이전트용 토큰을 발급합니다.": "Click to create a token for this agent.",
   "토큰 만료": "Token expiry",
   "토큰 숨기기": "Hide token",
-  "토큰 표시": "Reveal token"
+  "토큰 표시": "Reveal token",
+  "관리자가 연결하는 선택 기능입니다. 기본값은 꺼짐이며, 비밀번호 로그인은 계속 사용할 수 있습니다.": "Optional feature configured by an administrator. Off by default; password sign-in remains available.",
+  "사용": "Enable",
+  "Client ID와 Client Secret을 입력하고 사용을 선택한 뒤 저장합니다.": "Enter the Client ID and Client Secret, select Enable, then save."
 }
